@@ -185,6 +185,26 @@ function liveViewRuntime() {
         }
       }
     }
+
+    // Report our content height to the parent so the runtime can give THIS frame
+    // a full-height view (Allure collapses html attachments to a thin strip, even
+    // in fullscreen). Re-report when the layout changes (tree toggled, node picked).
+    const reportHeight = () => {
+      const h = Math.max(
+        document.documentElement ? document.documentElement.scrollHeight : 0,
+        document.body ? document.body.scrollHeight : 0,
+      );
+      try {
+        parent.postMessage({ appiumLiveViewHeight: h }, "*");
+      } catch (e) {
+        /* ignore */
+      }
+    };
+    setTimeout(reportHeight, 50);
+    setTimeout(reportHeight, 400);
+    window.addEventListener("resize", reportHeight);
+    document.addEventListener("change", () => setTimeout(reportHeight, 60));
+    document.addEventListener("click", () => setTimeout(reportHeight, 60));
   }
 
   // Build the script tag injected into the srcdoc. The opening/closing tags are
@@ -193,6 +213,37 @@ function liveViewRuntime() {
   // script tag in index.html when serialized. (Do not write the tag out in this
   // comment either, for the same reason.)
   const injectedScript = "<scr" + "ipt>(" + interact.toString() + ")();</scr" + "ipt>";
+
+  // Allure sizes html-attachment iframes with `flex:1;min-height:0`, collapsing
+  // them to a thin strip (even in fullscreen). For OUR frames only, we override
+  // that: when a frame reports its content height, give it that exact height and
+  // stop its ancestors from clipping / capping it. Other attachments are untouched.
+  const lvFrames = [];
+  function fitFrame(frame, h) {
+    const px = Math.max(320, Math.min(h || 0, 20000)) + "px";
+    frame.style.flex = "none";
+    frame.style.minHeight = "0";
+    frame.style.height = px;
+    let el = frame.parentElement;
+    let n = 0;
+    while (el && el !== document.body && n < 12) {
+      el.style.height = "auto";
+      el.style.maxHeight = "none";
+      const oy = getComputedStyle(el).overflowY;
+      if (oy === "hidden" || oy === "clip") el.style.overflowY = "visible";
+      el = el.parentElement;
+      n++;
+    }
+  }
+  window.addEventListener("message", (e) => {
+    if (!e.data || typeof e.data.appiumLiveViewHeight !== "number") return;
+    for (let i = 0; i < lvFrames.length; i++) {
+      if (lvFrames[i].contentWindow === e.source) {
+        fitFrame(lvFrames[i], e.data.appiumLiveViewHeight);
+        break;
+      }
+    }
+  });
 
   function enhance(frame) {
     if (frame.__lvEnhanced) return;
@@ -211,6 +262,7 @@ function liveViewRuntime() {
         // "View XML" new-tab open work from inside the sandboxed iframe.
         frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-downloads allow-popups");
         frame.srcdoc = html + injectedScript;
+        if (lvFrames.indexOf(frame) < 0) lvFrames.push(frame);
       })
       .catch(() => {
         frame.__lvEnhanced = false;
