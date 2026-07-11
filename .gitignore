@@ -1,2 +1,5 @@
 node_modules/
 examples/demo*.html
+examples/allure-results/
+examples/allure-report/
+examples/.shot.*
