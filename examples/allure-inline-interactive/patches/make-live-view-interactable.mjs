@@ -133,6 +133,67 @@ function liveViewRuntime() {
       });
       if (input.value) run(input.value.trim()); // support a pre-filled XPath
     }
+
+    // Header tools: view the page source (XML) in a new tab, download the screenshot.
+    const srcXml = b64
+      ? (() => {
+          try {
+            return decodeB64(b64);
+          } catch (e) {
+            return null;
+          }
+        })()
+      : null;
+    const blobFromDataUri = (uri) => {
+      const m = /^data:([^;,]*?)(;base64)?,([\s\S]*)$/.exec(uri || "");
+      if (!m) return null;
+      let bytes;
+      if (m[2]) {
+        const bin = atob(m[3]);
+        bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      } else {
+        bytes = new TextEncoder().encode(decodeURIComponent(m[3]));
+      }
+      return new Blob([bytes], { type: m[1] || "application/octet-stream" });
+    };
+    const download = (blob, name) => {
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = u;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 2000);
+    };
+    const openBlob = (blob, fallbackName) => {
+      const u = URL.createObjectURL(blob);
+      let w = null;
+      try {
+        w = window.open(u, "_blank");
+      } catch (e) {
+        /* popups blocked */
+      }
+      if (!w) download(blob, fallbackName);
+      setTimeout(() => URL.revokeObjectURL(u), 60000);
+    };
+    const xmlBtn = document.getElementById("lv-xml");
+    if (xmlBtn && srcXml) {
+      xmlBtn.addEventListener("click", () =>
+        openBlob(new Blob([srcXml], { type: "application/xml" }), "page-source.xml"),
+      );
+    }
+    const imgBtn = document.getElementById("lv-img");
+    const shot = document.querySelector(".lv-shot");
+    if (imgBtn && shot) {
+      imgBtn.addEventListener("click", () => {
+        const blob = blobFromDataUri(shot.getAttribute("src"));
+        if (!blob) return;
+        const ext = /svg/.test(blob.type) ? "svg" : (/(png|jpe?g|webp|gif)/.exec(blob.type) || [0, "png"])[1];
+        download(blob, "screenshot." + ext);
+      });
+    }
   }
 
   // Build the script tag injected into the srcdoc. The opening/closing tags are
@@ -155,7 +216,9 @@ function liveViewRuntime() {
           return;
         }
         frame.removeAttribute("src");
-        frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
+        // allow-downloads / allow-popups so the "Save image" download and the
+        // "View XML" new-tab open work from inside the sandboxed iframe.
+        frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-downloads allow-popups");
         frame.srcdoc = html + injectedScript;
       })
       .catch(() => {
