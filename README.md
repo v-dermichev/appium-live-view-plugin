@@ -165,26 +165,22 @@ Only the live-view frames are touched; every other attachment keeps Allure's
 original script-less sandbox. See `make-live-view-interactable.mjs` (a build-time
 patch applied after `allure generate`).
 
-## Try it without a device
+## Use without the plugin (client side)
 
-```bash
-npm test                              # unit tests (parser, locators, renderer)
+The renderer is framework-agnostic — you can build the live view from any
+`(page source XML, screenshot)` pair captured over WebDriver, without installing
+the plugin on the server (handy when a Selenium Grid fronts the Appium nodes):
+
+```js
+import { buildLiveViewHtml } from 'appium-live-view-plugin/lib/render.js';
+
+const xml = await driver.getPageSource();
+const screenshot = await driver.getScreenshot();      // base64 PNG
+const html = buildLiveViewHtml({ xml, screenshot, title: 'Login screen' });
+// then attach `html` as text/html to your report
 ```
 
-The demo replaces the device screenshot with an SVG drawn from the same parsed
-rectangles, so the overlays sit exactly on top of it.
-
-## Capture from a real device (via WebDriver/Grid)
-
-plugin: it opens a session, pulls the real page source + screenshot over
-WebDriver, and renders the same live view — useful when the plugin is not
-installed on the server (e.g. a Selenium Grid fronting Appium nodes).
-
-```bash
-```
-
-an element pinned:
-
+Run `npm test` for the unit tests (parser, locators, renderer).
 
 ## Limitations
 
