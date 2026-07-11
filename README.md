@@ -16,32 +16,6 @@ line:
 allure.attach(html, "Live view", allure.attachment_type.HTML)
 ```
 
-## Why a plugin that returns HTML, instead of an Allure plugin?
-
-The original idea was an Allure 3 plugin adding a new *attachment renderer*.
-Allure 3's plugin API does not allow that: `@allurereport/plugin-api` exposes
-only generation-time Node hooks (`start`/`update`/`done`/`info`) with a
-read-only store and `reportFiles.addFile`; the web UI picks an attachment
-renderer from a **hard-coded compile-time map** in
-`web-components/.../Attachment.tsx`, with no registration hook. Adding a native
-renderer means forking and rebuilding `web-awesome`, not shipping a plugin.
-
-So the live view is delivered as a **`text/html` attachment** instead, which
-Allure already renders. That imposes one constraint the HTML is built around:
-
-> Allure runs `text/html` attachments through **DOMPurify** and shows them in
-> `<iframe sandbox="allow-same-origin">` — **no `allow-scripts`**. JavaScript is
-> stripped and cannot run inline.
-
-Therefore all core interactivity is **pure CSS** (hover via `:hover`,
-click-to-pin via the hidden-radio `:checked` technique), which DOMPurify keeps
-and the sandbox allows. When the attachment is opened/downloaded standalone,
-scripts run and a small enhancement layer adds copy-to-clipboard on locators and
-a filter box. Nothing essential depends on JS.
-
-This also means the same command works with **Allure 2** and any other reporter
-that renders HTML attachments, and the plugin has **zero Allure dependency**.
-
 ## How the "live view" mapping works (extracted from Appium Inspector)
 
 The data half of Inspector's screenshot↔source mapping is small and pure; it is
