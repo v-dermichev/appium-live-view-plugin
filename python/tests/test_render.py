@@ -103,8 +103,23 @@ def test_fully_on_screen_z_index_above_partial():
 
     on_screen = next(n for n in parsed["nodes"] if n.attributes.get("name") == "login")  # within 390x844
     partial = next(n for n in parsed["nodes"] if n.attributes.get("name") == "offscreen-card")  # x2=800
-    assert z_of(on_screen.index) >= 1000
-    assert z_of(partial.index) < 1000
+    assert z_of(on_screen.index) >= 1000000
+    assert z_of(partial.index) < 1000000
+
+
+def test_smaller_element_above_larger_at_same_depth():
+    import re
+
+    parsed = parse_source(IOS_XML)
+    html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1)
+
+    def z_of(idx):
+        return int(re.search(rf'lv-el-{idx}"[^>]*z-index:(\d+)', html).group(1))
+
+    ghost = next(n for n in parsed["nodes"] if n.attributes.get("name") == "ghost")  # 200×24
+    wrapper = next(n for n in parsed["nodes"] if n.attributes.get("name") == "wrapper")  # 390×120, same depth, larger
+    assert ghost.depth == wrapper.depth
+    assert z_of(ghost.index) > z_of(wrapper.index)  # smaller on top
 
 
 def test_suggest_locators_order():

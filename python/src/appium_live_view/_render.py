@@ -156,13 +156,20 @@ def build_live_view_html(
         r = n.rect
         return r["x1"] >= 0 and r["y1"] >= 0 and r["x2"] <= extents["width"] and r["y2"] <= extents["height"]
 
+    # smaller-area elements sit above larger ones at the same depth (see render.js)
+    area_rank: dict = {}
+    for i, n in enumerate(sorted((x for x in nodes if _has_rect(x)), key=lambda x: -(x.rect["w"] * x.rect["h"]))):
+        area_rank[n.index] = min(i, 999)
+
+    def _z_index(n: Node) -> int:
+        # onScreen? then depth then smaller-area rank (special layers live above)
+        return (1000000 if _on_screen(n) else 0) + n.depth * 1000 + area_rank.get(n.index, 0)
+
     def _overlay(n: Node) -> str:
         r = n.rect
-        # fully-on-screen elements render above partially-off-screen ones
-        z = n.depth + (1000 if _on_screen(n) else 0)
         style = (
             f'left:{_pct(r["x1"], extents["width"])};top:{_pct(r["y1"], extents["height"])};'
-            f'width:{_pct(r["w"], extents["width"])};height:{_pct(r["h"], extents["height"])};z-index:{z}'
+            f'width:{_pct(r["w"], extents["width"])};height:{_pct(r["h"], extents["height"])};z-index:{_z_index(n)}'
         )
         if _is_box(n):
             return (
@@ -195,7 +202,7 @@ def build_live_view_html(
         if _is_box(n):
             css += f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{outline:2px solid #e5484d;background:rgba(229,72,77,.16)}}"
         elif _has_rect(n):
-            css += f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{display:block;outline:2px dotted #e5484d;background:rgba(229,72,77,.1);z-index:7000}}"
+            css += f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{display:block;outline:2px dotted #e5484d;background:rgba(229,72,77,.1);z-index:2000000}}"
         return css
 
     selection_css = "".join(_selection_rule(n) for n in nodes)

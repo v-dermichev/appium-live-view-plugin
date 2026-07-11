@@ -36,6 +36,9 @@ the Python package (`appium-live-view` on PyPI) share one version.
 - **Fully on-screen elements render above partially off-screen ones,** so a
   fixed/stable element (e.g. a bottom tab bar) stays hoverable and clickable even
   when a half-scrolled element's box would otherwise cover it.
+- **Smaller elements stay clickable.** At the same depth, a smaller element now
+  renders above a larger sibling (ranked by area), so a small icon / close button
+  isn't covered by a big neighbouring box.
 
 ## [0.1.0] — 2026-07-11
 

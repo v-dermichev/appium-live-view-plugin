@@ -119,8 +119,18 @@ test('fully on-screen overlays get a higher z-index than partially off-screen on
   const zOf = (idx) => Number(html.match(new RegExp(`lv-el-${idx}"[^>]*z-index:(\\d+)`))[1]);
   const onScreen = parsed.nodes.find((n) => n.attributes.name === 'title'); // within 390x844
   const partial = parsed.nodes.find((n) => n.attributes.name === 'offscreen-card'); // x2=800
-  assert.ok(zOf(onScreen.index) >= 1000, 'fully on-screen is boosted');
-  assert.ok(zOf(partial.index) < 1000, 'partially off-screen is not boosted');
+  assert.ok(zOf(onScreen.index) >= 1000000, 'fully on-screen is boosted');
+  assert.ok(zOf(partial.index) < 1000000, 'partially off-screen is not boosted');
+});
+
+test('at the same depth, a smaller element gets a higher z-index than a larger one', () => {
+  const parsed = parseSource(IOS_XML);
+  const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1 });
+  const zOf = (idx) => Number(html.match(new RegExp(`lv-el-${idx}"[^>]*z-index:(\\d+)`))[1]);
+  const title = parsed.nodes.find((n) => n.attributes.name === 'title'); // 342×34
+  const login = parsed.nodes.find((n) => n.attributes.name === 'login'); // 342×48, same depth, larger
+  assert.equal(title.depth, login.depth, 'same depth');
+  assert.ok(zOf(title.index) > zOf(login.index), 'the smaller element is on top');
 });
 
 test('non-drawable nodes get a selectable tree row + panel but no overlay', () => {
