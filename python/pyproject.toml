@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "appium-live-view"
+version = "0.1.0"
+description = "Build a standalone, interactive HTML live view from an Appium page source (XML) + screenshot"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["appium", "allure", "inspector", "screenshot", "xml", "testing"]
+
+[project.urls]
+Homepage = "https://github.com/v-dermichev/appium-live-view-plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+appium_live_view = ["_assets.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

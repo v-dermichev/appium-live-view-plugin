@@ -1,6 +1,13 @@
 node_modules/
-
-# generated locally, never committed
 examples/**/allure-results/
 examples/**/allure-report/
 examples/**/*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+python/build/
+python/dist/
+.pytest_cache/
+.venv/
