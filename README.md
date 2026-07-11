@@ -144,9 +144,26 @@ and the XPath tester.
   elements; the status shows the match count, `no match`, or `invalid XPath`.
 
 Hover and click-to-pin are pure CSS and work **inline** in Allure. Copy and the
-XPath tester need JavaScript, so they work when the attachment is opened
-**standalone** (new tab / download) — Allure's inline iframe runs no scripts.
-Inline, one click still selects a locator's text for a manual copy.
+XPath tester need JavaScript. They work when the attachment is opened
+**standalone** (new tab / download), and also **inline** if the report applies
+the optional runtime patch below.
+
+The live view marks its root with `data-appium-live-view` and embeds the page
+source as `data-src` (base64) — both survive DOMPurify — so a report-side script
+can drive the interactive features without the attachment shipping any JS itself.
+
+### Optional: make it interactive inline in Allure 3
+
+Allure renders `text/html` attachments with DOMPurify (scripts stripped) inside
+`<iframe sandbox="allow-same-origin">` (no `allow-scripts`), so an attachment's
+own JS never runs inline. A post-generation report patch can restore it: for each
+attachment iframe whose (already sanitized) content carries the
+`data-appium-live-view` marker, it swaps the sandboxed `blob:` iframe for a
+`srcdoc` iframe with `allow-scripts` and injects the interactivity script. `srcdoc`
+inherits the report's origin, so this works for **served and single-file** reports.
+Only the live-view frames are touched; every other attachment keeps Allure's
+original script-less sandbox. See `make-live-view-interactable.mjs` (a build-time
+patch applied after `allure generate`).
 
 ## Try it without a device
 
