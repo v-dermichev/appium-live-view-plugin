@@ -98,7 +98,7 @@ test('overlays cover drawable nodes; panels, radios and tree rows cover every no
   assert.ok(html.includes(`${drawable.length} elements`));
 });
 
-test('visible="false" / accessible="false" elements: selectable in tree, no overlay', () => {
+test('visible/accessible=false: selectable, no drawable overlay, dotted ghost overlay', () => {
   const parsed = parseSource(IOS_XML);
   const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, platformName: 'iOS' });
   for (const name of ['ghost', 'wrapper']) {
@@ -106,8 +106,21 @@ test('visible="false" / accessible="false" elements: selectable in tree, no over
     assert.ok(n && n.rect, `${name} has on-screen bounds`);
     assert.ok(html.includes(`class="lv-node lv-node-${n.index}"`), `${name} in the source tree`);
     assert.ok(html.includes(`lv-panel lv-panel-${n.index}`), `${name} has a details panel`);
-    assert.ok(!html.includes(`lv-el lv-el-${n.index}"`), `${name} has no overlay`);
+    assert.ok(!html.includes(`lv-el lv-el-${n.index}"`), `${name} has no drawable overlay`);
+    assert.ok(html.includes(`lv-ghost lv-el-${n.index}"`), `${name} has a ghost overlay (dotted on select)`);
+    // the dotted-on-select rule exists for it
+    assert.match(html, new RegExp(`#lv-r-${n.index}:checked~[^}]*\\.lv-el-${n.index}\\{[^}]*dotted`));
   }
+});
+
+test('fully on-screen overlays get a higher z-index than partially off-screen ones', () => {
+  const parsed = parseSource(IOS_XML);
+  const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1 });
+  const zOf = (idx) => Number(html.match(new RegExp(`lv-el-${idx}"[^>]*z-index:(\\d+)`))[1]);
+  const onScreen = parsed.nodes.find((n) => n.attributes.name === 'title'); // within 390x844
+  const partial = parsed.nodes.find((n) => n.attributes.name === 'offscreen-card'); // x2=800
+  assert.ok(zOf(onScreen.index) >= 1000, 'fully on-screen is boosted');
+  assert.ok(zOf(partial.index) < 1000, 'partially off-screen is not boosted');
 });
 
 test('non-drawable nodes get a selectable tree row + panel but no overlay', () => {

@@ -69,6 +69,19 @@ function liveViewRuntime() {
       });
     });
 
+    // On selection: the view stays put (radios are position:fixed), and the
+    // picked row is centered in the source tree — scrolling only the tree.
+    document.addEventListener("change", (e) => {
+      if (!e.target || e.target.name !== "lv-sel" || e.target.id === "lv-none") return;
+      const node = document.querySelector(".lv-node-" + e.target.id.replace("lv-r-", ""));
+      const tree = document.querySelector(".lv-tree");
+      if (node && tree && getComputedStyle(tree).display !== "none") {
+        const tr = tree.getBoundingClientRect();
+        const nr = node.getBoundingClientRect();
+        tree.scrollTop += nr.top - tr.top - tree.clientHeight / 2 + nr.height / 2;
+      }
+    });
+
     let xdoc = null;
     let xels = null;
     const b64 = root.getAttribute("data-src");

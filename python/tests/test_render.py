@@ -77,7 +77,9 @@ def test_ios_extents_are_app_box_not_max():
     assert parsed["extents"] == {"width": 390, "height": 844}
 
 
-def test_not_visible_or_not_accessible_elements_have_no_overlay():
+def test_not_visible_or_not_accessible_elements_get_ghost_overlay():
+    import re
+
     parsed = parse_source(IOS_XML)
     html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1, platform_name="iOS")
     for name in ("ghost", "wrapper"):  # visible="false" and accessible="false"
@@ -85,7 +87,24 @@ def test_not_visible_or_not_accessible_elements_have_no_overlay():
         assert n.rect  # has on-screen bounds
         assert f'class="lv-node lv-node-{n.index}"' in html  # in the tree
         assert f"lv-panel lv-panel-{n.index}" in html  # has a panel
-        assert f'lv-el lv-el-{n.index}"' not in html  # no overlay
+        assert f'lv-el lv-el-{n.index}"' not in html  # no drawable overlay
+        assert f'lv-ghost lv-el-{n.index}"' in html  # ghost overlay
+        assert re.search(rf"#lv-r-{n.index}:checked~[^}}]*\.lv-el-{n.index}\{{[^}}]*dotted", html)
+
+
+def test_fully_on_screen_z_index_above_partial():
+    import re
+
+    parsed = parse_source(IOS_XML)
+    html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1)
+
+    def z_of(idx):
+        return int(re.search(rf'lv-el-{idx}"[^>]*z-index:(\d+)', html).group(1))
+
+    on_screen = next(n for n in parsed["nodes"] if n.attributes.get("name") == "login")  # within 390x844
+    partial = next(n for n in parsed["nodes"] if n.attributes.get("name") == "offscreen-card")  # x2=800
+    assert z_of(on_screen.index) >= 1000
+    assert z_of(partial.index) < 1000
 
 
 def test_suggest_locators_order():

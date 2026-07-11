@@ -22,6 +22,20 @@ the Python package (`appium-live-view` on PyPI) share one version.
   containers — windows, nested `Other` wrappers, scroll views — and redundant inner
   images/labels) no longer get an overlay, removing the deep-nesting clutter and
   leaving the interactive, locatable elements. They stay selectable via the tree.
+- **Selecting an element no longer jumps the page to the top** (the hidden
+  selection radios are now `position:fixed`).
+
+### Added
+
+- **The source tree follows selection.** Picking an element (on the screenshot or
+  in the tree) scrolls the source tree to center that element — scrolling only the
+  tree, never the page.
+- **Dotted outline for not-shown elements.** Occluded / non-accessibility elements
+  have no overlay by default, but selecting one in the source tree now draws a
+  dotted outline where the driver reports it.
+- **Fully on-screen elements render above partially off-screen ones,** so a
+  fixed/stable element (e.g. a bottom tab bar) stays hoverable and clickable even
+  when a half-scrolled element's box would otherwise cover it.
 
 ## [0.1.0] — 2026-07-11
 

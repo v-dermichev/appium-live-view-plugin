@@ -36,6 +36,10 @@ def _pct(part: float, whole: float) -> str:
     return f"{(part / whole * 100):.4f}%" if whole > 0 else "0%"
 
 
+def _has_rect(node: Node) -> bool:
+    return bool(node.rect and node.rect["w"] > 0 and node.rect["h"] > 0)
+
+
 def _is_box(node: Node) -> bool:
     # Overlay only for elements shown on the screenshot AND that are accessibility
     # elements. iOS marks occluded / not-scrolled-in elements visible="false"
@@ -44,9 +48,7 @@ def _is_box(node: Node) -> bool:
     # so Android is unaffected (its equivalent of visible is displayed).
     a = node.attributes
     return bool(
-        node.rect
-        and node.rect["w"] > 0
-        and node.rect["h"] > 0
+        _has_rect(node)
         and a.get("visible") != "false"
         and a.get("displayed") != "false"
         and a.get("accessible") != "false"
@@ -150,19 +152,27 @@ def build_live_view_html(
         ]
     )
 
-    overlays = "\n".join(
-        (
-            lambda r, style: (
+    def _on_screen(n: Node) -> bool:
+        r = n.rect
+        return r["x1"] >= 0 and r["y1"] >= 0 and r["x2"] <= extents["width"] and r["y2"] <= extents["height"]
+
+    def _overlay(n: Node) -> str:
+        r = n.rect
+        # fully-on-screen elements render above partially-off-screen ones
+        z = n.depth + (1000 if _on_screen(n) else 0)
+        style = (
+            f'left:{_pct(r["x1"], extents["width"])};top:{_pct(r["y1"], extents["height"])};'
+            f'width:{_pct(r["w"], extents["width"])};height:{_pct(r["h"], extents["height"])};z-index:{z}'
+        )
+        if _is_box(n):
+            return (
                 f'<label class="lv-el lv-el-{n.index}" for="lv-r-{n.index}" style="{style}">'
                 f'<span class="lv-tip">{_escape(_tip_label(n))}</span></label>'
             )
-        )(
-            n.rect,
-            f'left:{_pct(n.rect["x1"], extents["width"])};top:{_pct(n.rect["y1"], extents["height"])};'
-            f'width:{_pct(n.rect["w"], extents["width"])};height:{_pct(n.rect["h"], extents["height"])};z-index:{n.depth}',
-        )
-        for n in drawable
-    )
+        # occluded / non-accessibility element: a dotted outline only when selected
+        return f'<label class="lv-ghost lv-el-{n.index}" for="lv-r-{n.index}" style="{style}"></label>'
+
+    overlays = "\n".join(_overlay(n) for n in nodes if _has_rect(n))
 
     def _tree_row(n: Node) -> str:
         a = n.attributes or {}
@@ -177,16 +187,18 @@ def build_live_view_html(
     tree_rows = "\n".join(_tree_row(n) for n in nodes)
     panels = "\n".join(_render_panel(n) for n in nodes)
 
-    selection_css = "".join(
-        f"#lv-r-{n.index}:checked~.lv-main .lv-panel-{n.index}{{display:block}}"
-        f"#lv-r-{n.index}:checked~.lv-main .lv-node-{n.index}{{background:rgba(229,72,77,.18);outline:1px solid rgba(229,72,77,.5)}}"
-        + (
-            f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{outline:2px solid #e5484d;background:rgba(229,72,77,.16)}}"
-            if _is_box(n)
-            else ""
+    def _selection_rule(n: Node) -> str:
+        css = (
+            f"#lv-r-{n.index}:checked~.lv-main .lv-panel-{n.index}{{display:block}}"
+            f"#lv-r-{n.index}:checked~.lv-main .lv-node-{n.index}{{background:rgba(229,72,77,.18);outline:1px solid rgba(229,72,77,.5)}}"
         )
-        for n in nodes
-    )
+        if _is_box(n):
+            css += f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{outline:2px solid #e5484d;background:rgba(229,72,77,.16)}}"
+        elif _has_rect(n):
+            css += f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{display:block;outline:2px dotted #e5484d;background:rgba(229,72,77,.1);z-index:7000}}"
+        return css
+
+    selection_css = "".join(_selection_rule(n) for n in nodes)
 
     meta = " · ".join(
         p
