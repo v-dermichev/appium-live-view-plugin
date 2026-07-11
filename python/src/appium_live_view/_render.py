@@ -37,7 +37,18 @@ def _pct(part: float, whole: float) -> str:
 
 
 def _is_box(node: Node) -> bool:
-    return bool(node.rect and node.rect["w"] > 0 and node.rect["h"] > 0)
+    # Overlay only for elements actually shown on the screenshot. iOS marks
+    # occluded / not-scrolled-in elements visible="false" while still reporting
+    # on-screen coordinates; drawing those makes phantom overlays. They remain
+    # selectable via the source tree. (Android's equivalent is displayed="false".)
+    a = node.attributes
+    return bool(
+        node.rect
+        and node.rect["w"] > 0
+        and node.rect["h"] > 0
+        and a.get("visible") != "false"
+        and a.get("displayed") != "false"
+    )
 
 
 def _tip_label(node: Node) -> str:
@@ -155,7 +166,7 @@ def build_live_view_html(
         a = n.attributes or {}
         key = a.get("resource-id") or a.get("content-desc") or a.get("text") or a.get("name") or a.get("label") or a.get("value") or ""
         attr = f' <span class="lv-node-attr">{_escape(str(key)[:40])}</span>' if key else ""
-        nobox = "" if _is_box(n) else ' <span class="lv-node-nobox" title="no bounds — not clickable on the screenshot">◌</span>'
+        nobox = "" if _is_box(n) else ' <span class="lv-node-nobox" title="not shown on the screenshot — select here to inspect">◌</span>'
         return (
             f'<label class="lv-node lv-node-{n.index}" for="lv-r-{n.index}" style="padding-left:{6 + n.depth * 13}px" title="{_escape(n.tag_name)}">'
             f'<span class="lv-node-tag">{_escape(n.tag_name)}</span>{attr}{nobox}</label>'

@@ -28,6 +28,7 @@ ANDROID_XML = """<?xml version='1.0' encoding='UTF-8'?>
 IOS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <AppiumAUT>
   <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="MyApp" x="0" y="0" width="390" height="844">
+    <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" name="ghost" label="Ghost" visible="false" x="24" y="120" width="200" height="24"/>
     <XCUIElementTypeScrollView type="XCUIElementTypeScrollView" name="carousel" x="0" y="300" width="390" height="200">
       <XCUIElementTypeCell type="XCUIElementTypeCell" name="offscreen-card" x="420" y="320" width="380" height="160"/>
     </XCUIElementTypeScrollView>
@@ -73,6 +74,16 @@ def test_ios_extents_are_app_box_not_max():
     assert any(n.rect and n.rect["x2"] > 390 for n in parsed["nodes"])
     # coordinate space = the screen (app box), so overlays align with the screenshot
     assert parsed["extents"] == {"width": 390, "height": 844}
+
+
+def test_not_visible_elements_have_no_overlay():
+    parsed = parse_source(IOS_XML)
+    ghost = next(n for n in parsed["nodes"] if n.attributes.get("name") == "ghost")
+    assert ghost.rect  # has on-screen bounds but visible="false"
+    html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1, platform_name="iOS")
+    assert f'class="lv-node lv-node-{ghost.index}"' in html  # in the tree
+    assert f"lv-panel lv-panel-{ghost.index}" in html  # has a panel
+    assert f'lv-el lv-el-{ghost.index}"' not in html  # no overlay
 
 
 def test_suggest_locators_order():
