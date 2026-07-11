@@ -72,18 +72,34 @@ test('suggestLocators prefers accessibility id and id', () => {
   assert.ok(locs.some((l) => l.value.startsWith('/hierarchy/')));
 });
 
-test('buildLiveViewHtml emits one overlay + one panel per drawable node', () => {
+test('overlays cover drawable nodes; panels, radios and tree rows cover every node', () => {
   const parsed = parseSource(ANDROID_XML);
-  const drawable = parsed.nodes.filter((n) => n.rect && n.rect.w > 0 && n.rect.h > 0);
+  const all = parsed.nodes;
+  const drawable = all.filter((n) => n.rect && n.rect.w > 0 && n.rect.h > 0);
+  assert.ok(all.length > drawable.length, 'fixture has non-drawable nodes (e.g. <hierarchy>)');
   const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, platformName: 'Android' });
 
   assert.ok(html.startsWith('<!doctype html>'));
+  // Overlays only for elements with bounds.
   assert.equal((html.match(/class="lv-el /g) || []).length, drawable.length);
-  assert.equal((html.match(/class="lv-panel lv-panel-\d/g) || []).length, drawable.length);
-  // Radios: one per drawable + the "none" default.
-  assert.equal((html.match(/name="lv-sel"/g) || []).length, drawable.length + 1);
+  // Panels, selection radios and tree rows for every node — so non-drawable /
+  // covered elements are still selectable via the source tree.
+  assert.equal((html.match(/class="lv-panel lv-panel-\d/g) || []).length, all.length);
+  assert.equal((html.match(/name="lv-sel"/g) || []).length, all.length + 1);
+  assert.equal((html.match(/class="lv-node lv-node-\d/g) || []).length, all.length);
   assert.ok(html.includes(`data:image/png;base64,${PNG_1x1}`));
   assert.ok(html.includes(`${drawable.length} elements`));
+});
+
+test('non-drawable nodes get a selectable tree row + panel but no overlay', () => {
+  const parsed = parseSource(ANDROID_XML);
+  const hierarchy = parsed.nodes.find((n) => n.tagName === 'hierarchy');
+  assert.ok(hierarchy && !hierarchy.rect, 'root <hierarchy> has no bounds');
+  const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1 });
+  assert.ok(html.includes(`class="lv-node lv-node-${hierarchy.index}"`), 'tree row present');
+  assert.ok(html.includes(`for="lv-r-${hierarchy.index}"`), 'row selects the node radio');
+  assert.ok(html.includes(`lv-panel lv-panel-${hierarchy.index}`), 'panel present');
+  assert.ok(!html.includes(`lv-el lv-el-${hierarchy.index}"`), 'no overlay for a non-drawable node');
 });
 
 test('buildLiveViewHtml escapes attribute values into panels', () => {

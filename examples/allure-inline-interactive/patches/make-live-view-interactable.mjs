@@ -90,8 +90,11 @@ function liveViewRuntime() {
       }
     };
     const clearHits = () => {
-      const hits = document.querySelectorAll(".lv-xhit");
-      for (let i = 0; i < hits.length; i++) hits[i].classList.remove("lv-xhit");
+      const hits = document.querySelectorAll(".lv-xhit,.lv-node-hit");
+      for (let i = 0; i < hits.length; i++) {
+        hits[i].classList.remove("lv-xhit");
+        hits[i].classList.remove("lv-node-hit");
+      }
     };
     const run = (q) => {
       clearHits();
@@ -109,7 +112,10 @@ function liveViewRuntime() {
       let first = null;
       for (let i = 0; i < n; i++) {
         const idx = Array.prototype.indexOf.call(xels, res.snapshotItem(i));
-        const ov = idx >= 0 ? document.querySelector(".lv-el-" + idx) : null;
+        if (idx < 0) continue;
+        const tn = document.querySelector(".lv-node-" + idx);
+        if (tn) tn.classList.add("lv-node-hit");
+        const ov = document.querySelector(".lv-el-" + idx);
         if (ov) {
           ov.classList.add("lv-xhit");
           drawn++;
@@ -134,7 +140,9 @@ function liveViewRuntime() {
       if (input.value) run(input.value.trim()); // support a pre-filled XPath
     }
 
-    // Header tools: view the page source (XML) in a new tab, download the screenshot.
+    // Header tools: give the XML/Image links real (blob) hrefs so they behave
+    // like links — click to open, Ctrl/Cmd-click for a new tab, right-click to
+    // save. (The source tree toggle is pure CSS and needs no JS.)
     const srcXml = b64
       ? (() => {
           try {
@@ -157,42 +165,25 @@ function liveViewRuntime() {
       }
       return new Blob([bytes], { type: m[1] || "application/octet-stream" });
     };
-    const download = (blob, name) => {
-      const u = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = u;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(u), 2000);
-    };
-    const openBlob = (blob, fallbackName) => {
-      const u = URL.createObjectURL(blob);
-      let w = null;
+    const xmlLink = document.getElementById("lv-xml");
+    if (xmlLink && srcXml) {
       try {
-        w = window.open(u, "_blank");
+        xmlLink.href = URL.createObjectURL(new Blob([srcXml], { type: "application/xml" }));
       } catch (e) {
-        /* popups blocked */
+        /* ignore */
       }
-      if (!w) download(blob, fallbackName);
-      setTimeout(() => URL.revokeObjectURL(u), 60000);
-    };
-    const xmlBtn = document.getElementById("lv-xml");
-    if (xmlBtn && srcXml) {
-      xmlBtn.addEventListener("click", () =>
-        openBlob(new Blob([srcXml], { type: "application/xml" }), "page-source.xml"),
-      );
     }
-    const imgBtn = document.getElementById("lv-img");
+    const imgLink = document.getElementById("lv-img");
     const shot = document.querySelector(".lv-shot");
-    if (imgBtn && shot) {
-      imgBtn.addEventListener("click", () => {
-        const blob = blobFromDataUri(shot.getAttribute("src"));
-        if (!blob) return;
-        const ext = /svg/.test(blob.type) ? "svg" : (/(png|jpe?g|webp|gif)/.exec(blob.type) || [0, "png"])[1];
-        download(blob, "screenshot." + ext);
-      });
+    if (imgLink && shot) {
+      const blob = blobFromDataUri(shot.getAttribute("src"));
+      if (blob) {
+        try {
+          imgLink.href = URL.createObjectURL(blob);
+        } catch (e) {
+          /* ignore */
+        }
+      }
     }
   }
 

@@ -116,11 +116,14 @@ and the XPath tester.
 - **Click a locator** → copies it (whole card is the target; shows `Copied ✓`).
 - **XPath tester** (top-right) → type an XPath to highlight all matching
   elements; the status shows the match count, `no match`, or `invalid XPath`.
-- **View XML** / **Save image** (header) → open the page source in a new tab and
-  download the screenshot.
+- **Source** (header) → toggle a source tree where **every** node is selectable
+  — including elements with no bounds, or hidden behind others, that can't be
+  clicked on the screenshot. Selecting a row pins the element and shows its panel.
+- **XML** / **Image** (header) → links to the page source and screenshot (click,
+  Ctrl/Cmd-click for a new tab, or right-click to save).
 
-Hover and click-to-pin are pure CSS and work **inline** in Allure. Copy, the
-XPath tester, and the header buttons need JavaScript. They work when the attachment is opened
+Hover, click-to-pin, and the source tree are pure CSS and work **inline** in
+Allure. Copy, the XPath tester, and the XML/Image links need JavaScript. They work when the attachment is opened
 **standalone** (new tab / download), and also **inline** if the report applies
 the optional runtime patch below.
 
