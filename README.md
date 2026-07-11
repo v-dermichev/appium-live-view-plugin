@@ -131,7 +131,22 @@ await allure.addAttachment('Live view', html, 'text/html');
 ```
 
 Inside the Allure report the attachment shows the screenshot with hoverable,
-clickable element overlays. Open it in a new tab for copy-to-clipboard locators.
+clickable element overlays. Open it in a new tab for copy-to-clipboard locators
+and the XPath tester.
+
+## Interactions
+
+- **Hover** an element → highlight + tooltip.
+- **Click** an element → pin it; the panel shows its attributes and suggested
+  locators.
+- **Click a locator** → copies it (whole card is the target; shows `Copied ✓`).
+- **XPath tester** (top-right) → type an XPath to highlight all matching
+  elements; the status shows the match count, `no match`, or `invalid XPath`.
+
+Hover and click-to-pin are pure CSS and work **inline** in Allure. Copy and the
+XPath tester need JavaScript, so they work when the attachment is opened
+**standalone** (new tab / download) — Allure's inline iframe runs no scripts.
+Inline, one click still selects a locator's text for a manual copy.
 
 ## Try it without a device
 
