@@ -1,5 +1,9 @@
 # appium-live-view-plugin
 
+[![PyPI](https://img.shields.io/pypi/v/appium-live-view?label=PyPI%20%28python%29)](https://pypi.org/project/appium-live-view/)
+[![GitHub](https://img.shields.io/badge/GitHub-repo-181717?logo=github)](https://github.com/v-dermichev/appium-live-view-plugin)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
 An [Appium](https://appium.io) plugin that turns the active session's **page
 source + screenshot** into a single, self-contained, interactive **HTML "live
 view"** — the [Appium Inspector](https://github.com/appium/appium-inspector)
@@ -15,6 +19,15 @@ line:
 ```python
 allure.attach(html, "Live view", allure.attachment_type.HTML)
 ```
+
+![example live view](docs/live-view.png)
+
+*(Example, not a real device — the screenshot with element overlays, a selectable
+source tree, an XPath tester, and per-element locators.)*
+
+**See also:** [Python package](python/) (build the view from Python, no Node) ·
+[inline-interactive Allure 3 patch](examples/allure-inline-interactive/) (make the
+attachment interactive inside the report).
 
 ## How the "live view" mapping works (extracted from Appium Inspector)
 
@@ -37,7 +50,7 @@ attribute-scoped XPath, absolute XPath). `lib/render.js` assembles the HTML.
 ```bash
 # from git (git source REQUIRES --package with the package name)
 appium plugin install --source=git \
-  https://github.com/<you>/appium-live-view-plugin.git \
+  https://github.com/v-dermichev/appium-live-view-plugin.git \
   --package appium-live-view-plugin
 # or from a local checkout
 appium plugin install --source=local /path/to/appium-live-view-plugin
