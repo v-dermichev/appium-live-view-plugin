@@ -142,6 +142,18 @@ npm test                              # unit tests (parser, locators, renderer)
 The demo replaces the device screenshot with an SVG drawn from the same parsed
 rectangles, so the overlays sit exactly on top of it.
 
+## Capture from a real device (via WebDriver/Grid)
+
+plugin: it opens a session, pulls the real page source + screenshot over
+WebDriver, and renders the same live view — useful when the plugin is not
+installed on the server (e.g. a Selenium Grid fronting Appium nodes).
+
+```bash
+```
+
+an element pinned:
+
+
 ## Limitations
 
 - Inline in Allure, only CSS interactions run (hover + click-pin); copy/filter
