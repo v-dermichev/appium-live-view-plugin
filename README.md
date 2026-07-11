@@ -184,8 +184,9 @@ Run `npm test` for the unit tests (parser, locators, renderer).
 
 ## Limitations
 
-- Inline in Allure, only CSS interactions run (hover + click-pin); copy/filter
-  need the attachment opened standalone (script sandbox).
+- Inline in Allure, only CSS interactions run by default (hover + click-pin);
+  copy and the XPath tester need JS — available when the attachment is opened
+  standalone, or inline via the optional report patch above (script sandbox).
 - Web/hybrid contexts: only the native page source is mapped. Switch to a native
   context (or capture source there) for meaningful overlays.
 - Overlap handling is DOM stacking (deepest element wins hit-testing), not the
