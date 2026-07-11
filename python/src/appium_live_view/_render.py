@@ -37,10 +37,11 @@ def _pct(part: float, whole: float) -> str:
 
 
 def _is_box(node: Node) -> bool:
-    # Overlay only for elements actually shown on the screenshot. iOS marks
-    # occluded / not-scrolled-in elements visible="false" while still reporting
-    # on-screen coordinates; drawing those makes phantom overlays. They remain
-    # selectable via the source tree. (Android's equivalent is displayed="false".)
+    # Overlay only for elements shown on the screenshot AND that are accessibility
+    # elements. iOS marks occluded / not-scrolled-in elements visible="false"
+    # (phantom overlays) and layout containers accessible="false" (deep-nesting
+    # clutter); both are still selectable via the source tree. iOS-only attributes,
+    # so Android is unaffected (its equivalent of visible is displayed).
     a = node.attributes
     return bool(
         node.rect
@@ -48,6 +49,7 @@ def _is_box(node: Node) -> bool:
         and node.rect["h"] > 0
         and a.get("visible") != "false"
         and a.get("displayed") != "false"
+        and a.get("accessible") != "false"
     )
 
 

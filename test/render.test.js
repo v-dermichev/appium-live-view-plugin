@@ -98,14 +98,16 @@ test('overlays cover drawable nodes; panels, radios and tree rows cover every no
   assert.ok(html.includes(`${drawable.length} elements`));
 });
 
-test('visible="false" elements are selectable in the tree but get no overlay', () => {
+test('visible="false" / accessible="false" elements: selectable in tree, no overlay', () => {
   const parsed = parseSource(IOS_XML);
-  const ghost = parsed.nodes.find((n) => n.attributes.name === 'ghost');
-  assert.ok(ghost && ghost.rect, 'ghost has on-screen bounds but visible="false"');
   const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, platformName: 'iOS' });
-  assert.ok(html.includes(`class="lv-node lv-node-${ghost.index}"`), 'in the source tree');
-  assert.ok(html.includes(`lv-panel lv-panel-${ghost.index}`), 'has a details panel');
-  assert.ok(!html.includes(`lv-el lv-el-${ghost.index}"`), 'no overlay for a not-visible element');
+  for (const name of ['ghost', 'wrapper']) {
+    const n = parsed.nodes.find((x) => x.attributes.name === name);
+    assert.ok(n && n.rect, `${name} has on-screen bounds`);
+    assert.ok(html.includes(`class="lv-node lv-node-${n.index}"`), `${name} in the source tree`);
+    assert.ok(html.includes(`lv-panel lv-panel-${n.index}`), `${name} has a details panel`);
+    assert.ok(!html.includes(`lv-el lv-el-${n.index}"`), `${name} has no overlay`);
+  }
 });
 
 test('non-drawable nodes get a selectable tree row + panel but no overlay', () => {

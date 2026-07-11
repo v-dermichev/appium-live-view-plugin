@@ -18,6 +18,10 @@ the Python package (`appium-live-view` on PyPI) share one version.
   Android `displayed="false"`) no longer get an overlay — iOS reports on-screen
   coordinates for occluded / not-scrolled-in elements, which drew overlays over
   unrelated on-screen elements. Such elements stay selectable via the source tree.
+- **Fewer, cleaner iOS overlays.** Elements marked `accessible="false"` (layout
+  containers — windows, nested `Other` wrappers, scroll views — and redundant inner
+  images/labels) no longer get an overlay, removing the deep-nesting clutter and
+  leaving the interactive, locatable elements. They stay selectable via the tree.
 
 ## [0.1.0] — 2026-07-11
 

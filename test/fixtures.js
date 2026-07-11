@@ -23,6 +23,7 @@ export const IOS_XML = `<?xml version="1.0" encoding="UTF-8"?>
   <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="MyApp" x="0" y="0" width="390" height="844">
     <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Welcome" name="title" x="24" y="80" width="342" height="34"/>
     <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" name="ghost" label="Ghost" visible="false" x="24" y="120" width="200" height="24"/>
+    <XCUIElementTypeOther type="XCUIElementTypeOther" name="wrapper" accessible="false" visible="true" x="0" y="160" width="390" height="120"/>
     <XCUIElementTypeTextField type="XCUIElementTypeTextField" name="username" label="Username" x="24" y="200" width="342" height="44"/>
     <XCUIElementTypeScrollView type="XCUIElementTypeScrollView" name="carousel" x="0" y="300" width="390" height="200">
       <XCUIElementTypeCell type="XCUIElementTypeCell" name="offscreen-card" x="420" y="320" width="380" height="160"/>
