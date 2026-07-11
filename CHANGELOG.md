@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Versions follow
 [semantic versioning](https://semver.org/). The npm plugin, the JS renderer and
 the Python package (`appium-live-view` on PyPI) share one version.
 
-## [0.1.1] — unreleased
+## [0.1.1] — 2026-07-11
 
 ### Fixed
 
