@@ -1,7 +1,7 @@
 # appium-live-view-plugin
 
 [![PyPI](https://img.shields.io/pypi/v/appium-live-view?label=PyPI%20%28python%29)](https://pypi.org/project/appium-live-view/)
-[![GitHub](https://img.shields.io/badge/GitHub-v--dermichev%2Fappium--live--view--plugin-181717?logo=github)](https://github.com/v-dermichev/appium-live-view-plugin)
+[![GitHub](https://img.shields.io/badge/GitHub-v--dermichev%2Fappium--live--view--plugin-blue?logo=github)](https://github.com/v-dermichev/appium-live-view-plugin)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 An [Appium](https://appium.io) plugin that turns the active session's **page
