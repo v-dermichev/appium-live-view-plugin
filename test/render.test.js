@@ -48,8 +48,15 @@ test('parseSource computes extents from the root bounds (Android)', () => {
   assert.deepEqual(extents, { width: 1080, height: 2400 });
 });
 
-test('parseSource computes extents (iOS)', () => {
-  const { extents } = parseSource(IOS_XML);
+test('extents are the app box, not the max — iOS off-screen content ignored', () => {
+  const { nodes, extents } = parseSource(IOS_XML);
+  // fixture has an off-screen cell at x2=800, well beyond the 390-wide app
+  assert.ok(
+    nodes.some((n) => n.rect && n.rect.x2 > 390),
+    'fixture has an element beyond the screen',
+  );
+  // coordinate space must be the screen (app box), so overlays line up with the
+  // screenshot — NOT max(x2)/max(y2) which the off-screen content would inflate
   assert.deepEqual(extents, { width: 390, height: 844 });
 });
 

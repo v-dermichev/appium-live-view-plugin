@@ -13,3 +13,7 @@ python/dist/
 .venv/
 python/release.sh
 .env
+
+# local scratch (real device captures — never commit)
+page-source.xml
+screenshot.png

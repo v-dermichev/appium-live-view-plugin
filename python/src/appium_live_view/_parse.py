@@ -183,10 +183,12 @@ def parse_source(xml: str) -> dict:
         elif kind == "close" and stack:
             stack.pop()
 
-    width = height = 0
-    for node in nodes:
-        if node.rect:
-            width = max(width, node.rect["x2"])
-            height = max(height, node.rect["y2"])
+    # Coordinate space is the outermost element's box (the app / window / root
+    # layout = the device screen), NOT the max over all elements — iOS reports
+    # off-screen scrollable content with bounds far beyond the screen, which would
+    # otherwise shrink every overlay and break the stage aspect ratio.
+    root_box = next((n for n in nodes if n.rect), None)
+    width = root_box.rect["x2"] if root_box else 0
+    height = root_box.rect["y2"] if root_box else 0
 
     return {"nodes": nodes, "root": root[0], "extents": {"width": width, "height": height}}

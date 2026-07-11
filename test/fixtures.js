@@ -15,12 +15,17 @@ export const ANDROID_XML = `<?xml version='1.0' encoding='UTF-8'?>
   </android.widget.FrameLayout>
 </hierarchy>`;
 
-// iOS (XCUITest): `x`/`y`/`width`/`height` in points.
+// iOS (XCUITest): `x`/`y`/`width`/`height` in points. The horizontal scroll view
+// holds an off-screen cell (x2=800, beyond the 390-wide app) — iOS reports such
+// bounds, so the coordinate space must come from the app box, not the max extent.
 export const IOS_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <AppiumAUT>
   <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="MyApp" x="0" y="0" width="390" height="844">
     <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Welcome" name="title" x="24" y="80" width="342" height="34"/>
     <XCUIElementTypeTextField type="XCUIElementTypeTextField" name="username" label="Username" x="24" y="200" width="342" height="44"/>
+    <XCUIElementTypeScrollView type="XCUIElementTypeScrollView" name="carousel" x="0" y="300" width="390" height="200">
+      <XCUIElementTypeCell type="XCUIElementTypeCell" name="offscreen-card" x="420" y="320" width="380" height="160"/>
+    </XCUIElementTypeScrollView>
     <XCUIElementTypeButton type="XCUIElementTypeButton" name="login" label="Log in" x="24" y="740" width="342" height="48"/>
   </XCUIElementTypeApplication>
 </AppiumAUT>`;

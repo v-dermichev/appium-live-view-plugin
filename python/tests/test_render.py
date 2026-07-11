@@ -28,6 +28,9 @@ ANDROID_XML = """<?xml version='1.0' encoding='UTF-8'?>
 IOS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <AppiumAUT>
   <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="MyApp" x="0" y="0" width="390" height="844">
+    <XCUIElementTypeScrollView type="XCUIElementTypeScrollView" name="carousel" x="0" y="300" width="390" height="200">
+      <XCUIElementTypeCell type="XCUIElementTypeCell" name="offscreen-card" x="420" y="320" width="380" height="160"/>
+    </XCUIElementTypeScrollView>
     <XCUIElementTypeButton type="XCUIElementTypeButton" name="login" label="Log in" x="24" y="740" width="342" height="48"/>
   </XCUIElementTypeApplication>
 </AppiumAUT>"""
@@ -62,6 +65,14 @@ def test_extents_and_absolute_xpath():
     assert len(edits) == 2
     xp = absolute_xpath(edits[1])
     assert xp.startswith("/hierarchy/") and xp.endswith("android.widget.EditText[2]")
+
+
+def test_ios_extents_are_app_box_not_max():
+    parsed = parse_source(IOS_XML)
+    # off-screen cell at x2=800, beyond the 390-wide app
+    assert any(n.rect and n.rect["x2"] > 390 for n in parsed["nodes"])
+    # coordinate space = the screen (app box), so overlays align with the screenshot
+    assert parsed["extents"] == {"width": 390, "height": 844}
 
 
 def test_suggest_locators_order():
