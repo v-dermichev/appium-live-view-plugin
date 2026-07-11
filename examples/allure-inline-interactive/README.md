@@ -8,6 +8,11 @@ It works on **any setup** and has **no hardcoded URLs or paths**: the patch only
 reads the generated report's `index.html`. It works for both served and
 single-file reports.
 
+![live view expanded inside an Allure report](live-view-in-report.png)
+
+*The attachment rendered inline and expanded to full height inside a real Allure
+3 report (patched) — overlays, source tree, XPath tester and locators all live.*
+
 ## Why it's needed
 
 Allure renders `text/html` attachments through DOMPurify (scripts stripped)
