@@ -17,3 +17,6 @@ python/release.sh
 # local scratch (real device captures — never commit)
 page-source.xml
 screenshot.png
+
+# local iOS check artifacts (real screenshot — never commit)
+examples/allure-inline-interactive/ios-*
