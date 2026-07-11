@@ -119,8 +119,10 @@ and the XPath tester.
 - **Source** (header) → toggle a source tree where **every** node is selectable
   — including elements with no bounds, or hidden behind others, that can't be
   clicked on the screenshot. Selecting a row pins the element and shows its panel.
-- **XML** / **Image** (header) → links to the page source and screenshot (click,
-  Ctrl/Cmd-click for a new tab, or right-click to save).
+- **XML** / **Image** (header) → download the page source and screenshot
+  (right-click also offers *Save link as*). Viewing happens in place — the source
+  tree shows the XML, the stage shows the screenshot — because Allure's sandboxed
+  iframe blanks a blob opened in a new tab.
 
 Hover, click-to-pin, and the source tree are pure CSS and work **inline** in
 Allure. Copy, the XPath tester, and the XML/Image links need JavaScript. They work when the attachment is opened

@@ -165,25 +165,37 @@ function liveViewRuntime() {
       }
       return new Blob([bytes], { type: m[1] || "application/octet-stream" });
     };
-    const xmlLink = document.getElementById("lv-xml");
-    if (xmlLink && srcXml) {
+    const wireDownload = (el, blob, name) => {
+      if (!el || !blob) return;
+      let url;
       try {
-        xmlLink.href = URL.createObjectURL(new Blob([srcXml], { type: "application/xml" }));
+        url = URL.createObjectURL(blob);
       } catch (e) {
-        /* ignore */
+        return;
       }
+      el.href = url;
+      el.setAttribute("download", name);
+      el.addEventListener("click", (e) => {
+        // Always download; never navigate. A blob opened in a new tab is blank
+        // inside Allure's sandboxed iframe, and the Source tree already shows the
+        // XML in place. Keeps right-click "Save link as" working too.
+        e.preventDefault();
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    };
+    if (srcXml) {
+      wireDownload(document.getElementById("lv-xml"), new Blob([srcXml], { type: "application/xml" }), "page-source.xml");
     }
-    const imgLink = document.getElementById("lv-img");
     const shot = document.querySelector(".lv-shot");
-    if (imgLink && shot) {
+    if (shot) {
       const blob = blobFromDataUri(shot.getAttribute("src"));
-      if (blob) {
-        try {
-          imgLink.href = URL.createObjectURL(blob);
-        } catch (e) {
-          /* ignore */
-        }
-      }
+      const ext = blob ? (/svg/.test(blob.type) ? "svg" : (/(png|jpe?g|webp|gif)/.exec(blob.type) || [0, "png"])[1]) : "png";
+      wireDownload(document.getElementById("lv-img"), blob, "screenshot." + ext);
     }
 
     // Report our content height to the parent so the runtime can give THIS frame
@@ -220,17 +232,19 @@ function liveViewRuntime() {
   // stop its ancestors from clipping / capping it. Other attachments are untouched.
   const lvFrames = [];
   function fitFrame(frame, h) {
-    const px = Math.max(320, Math.min(h || 0, 20000)) + "px";
+    const px = Math.max(320, Math.min(h || 0, 20000));
     frame.style.flex = "none";
-    frame.style.minHeight = "0";
-    frame.style.height = px;
+    frame.style.minHeight = px + "px";
+    frame.style.height = px + "px";
+    // Grow ONLY the collapsed wrappers between the frame and the first ancestor
+    // that is already tall enough (the report's own scroll container). We do NOT
+    // touch overflow or the scroll container — doing so pulled the report's logo /
+    // footer into the frame. min-height alone lets the wrappers contain the frame.
     let el = frame.parentElement;
     let n = 0;
-    while (el && el !== document.body && n < 12) {
-      el.style.height = "auto";
-      el.style.maxHeight = "none";
-      const oy = getComputedStyle(el).overflowY;
-      if (oy === "hidden" || oy === "clip") el.style.overflowY = "visible";
+    while (el && el !== document.body && el !== document.documentElement && n < 12) {
+      if (Math.round(el.getBoundingClientRect().height) >= px) break;
+      el.style.minHeight = px + "px";
       el = el.parentElement;
       n++;
     }
@@ -260,7 +274,7 @@ function liveViewRuntime() {
         frame.removeAttribute("src");
         // allow-downloads / allow-popups so the "Save image" download and the
         // "View XML" new-tab open work from inside the sandboxed iframe.
-        frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-downloads allow-popups");
+        frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-downloads");
         frame.srcdoc = html + injectedScript;
         if (lvFrames.indexOf(frame) < 0) lvFrames.push(frame);
       })
