@@ -136,8 +136,9 @@ attachment iframe whose (already sanitized) content carries the
 `srcdoc` iframe with `allow-scripts` and injects the interactivity script. `srcdoc`
 inherits the report's origin, so this works for **served and single-file** reports.
 Only the live-view frames are touched; every other attachment keeps Allure's
-original script-less sandbox. See `make-live-view-interactable.mjs` (a build-time
-patch applied after `allure generate`).
+original script-less sandbox. A ready-to-use, dependency-free patch + Allure
+config (works on any setup, no hardcoded paths) is in
+[`examples/allure-inline-interactive/`](examples/allure-inline-interactive/).
 
 ## Use without the plugin (client side)
 
