@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,8 +8,9 @@ version = "0.1.0"
 description = "Build a standalone, interactive HTML live view from an Appium page source (XML) + screenshot"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "MIT" }
 keywords = ["appium", "allure", "inspector", "screenshot", "xml", "testing"]
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/v-dermichev/appium-live-view-plugin"
