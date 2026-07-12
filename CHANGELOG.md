@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Versions follow
 [semantic versioning](https://semver.org/). The npm plugin, the JS renderer and
 the Python package (`appium-live-view` on PyPI) share one version.
 
+## [0.1.2] — unreleased
+
+### Added
+
+- **WebView / hybrid context.** A DOM snapshot script (`WEB_SNAPSHOT_JS`, run via
+  `driver.execute_script` in a webview) captures each element's tag, attributes and
+  `getBoundingClientRect()` into the bounds-annotated source the live view
+  consumes — so hybrid pages get a live view too. Take a web-viewport screenshot;
+  the renderer auto-detects the web context and suggests **CSS + DOM-XPath**
+  locators (or force it with `context: "web"`). Exposed from the JS package
+  (`lib/web-snapshot.js`) and the Python package (`WEB_SNAPSHOT_JS`).
+
 ## [0.1.1] — 2026-07-11
 
 ### Fixed

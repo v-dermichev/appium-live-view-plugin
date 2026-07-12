@@ -8,6 +8,7 @@ from a page source (XML) + screenshot, with no server or browser needed.
     allure.attach(html, "Live view", allure.attachment_type.HTML)
 """
 
+from ._assets import WEB_SNAPSHOT_JS
 from ._locators import absolute_xpath, suggest_locators
 from ._parse import parse_coordinates, parse_source
 from ._render import build_live_view_html
@@ -18,6 +19,7 @@ __all__ = [
     "parse_coordinates",
     "suggest_locators",
     "absolute_xpath",
+    "WEB_SNAPSHOT_JS",
 ]
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"

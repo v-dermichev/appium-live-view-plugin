@@ -5,7 +5,8 @@ import { absoluteXPath, suggestLocators } from '../lib/locators.js';
 import { decodeEntities, parseCoordinates, parseSource } from '../lib/parse.js';
 import { buildLiveViewHtml } from '../lib/render.js';
 
-import { ANDROID_XML, IOS_XML, PNG_1x1 } from './fixtures.js';
+import { WEB_SNAPSHOT_JS } from '../lib/web-snapshot.js';
+import { ANDROID_XML, IOS_XML, PNG_1x1, WEB_XML } from './fixtures.js';
 
 test('parseCoordinates reads Android bounds', () => {
   assert.deepEqual(parseCoordinates({ bounds: '[10,20][110,220]' }), {
@@ -157,6 +158,29 @@ test('selectedPath pre-checks the matching radio', () => {
   const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, selectedPath: login.path });
   assert.match(html, new RegExp(`id="lv-r-${login.index}" class="lv-r" checked`));
   assert.ok(!/id="lv-none" class="lv-r" checked/.test(html));
+});
+
+test('web context: DOM snapshot gets CSS/DOM locators and overlays', () => {
+  const parsed = parseSource(WEB_XML);
+  assert.equal(parsed.root.tagName, 'webview');
+  const go = parsed.nodes.find((n) => n.attributes.id === 'go');
+  const locs = suggestLocators(go, true).map((l) => l.value);
+  assert.ok(locs.includes('#go'), 'id CSS selector');
+  assert.ok(locs.includes('button.btn.primary'), 'class CSS selector');
+  assert.ok(locs.includes('button[aria-label="Go now"]'), 'aria-label CSS selector');
+  assert.ok(locs.some((v) => v.startsWith("//button[normalize-space()='Go'")), 'text XPath');
+  assert.ok(locs.includes('/html/body/button'), 'absolute DOM XPath (webview wrapper stripped)');
+
+  // buildLiveViewHtml auto-detects web from the <webview> root -> panel has #go
+  const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1 });
+  assert.ok(html.includes('#go'), 'web locator in the panel');
+  assert.ok(html.includes(`lv-el lv-el-${go.index}"`), 'button overlay present');
+});
+
+test('WEB_SNAPSHOT_JS is a browser snapshot script', () => {
+  assert.match(WEB_SNAPSHOT_JS, /^return \(/);
+  assert.match(WEB_SNAPSHOT_JS, /getBoundingClientRect/);
+  assert.match(WEB_SNAPSHOT_JS, /bounds=/);
 });
 
 test('renders without a screenshot (source-only)', () => {

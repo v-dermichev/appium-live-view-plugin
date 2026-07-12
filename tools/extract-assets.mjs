@@ -7,6 +7,7 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { buildLiveViewHtml } from "../lib/render.js";
+import { WEB_SNAPSHOT_JS } from "../lib/web-snapshot.js";
 
 // Rendering with no source yields the static CSS (empty per-node selection rules)
 // and the full runtime script — exactly the parts that are language-independent.
@@ -21,7 +22,10 @@ const out =
   "# JS and Python renderers. Re-run `node tools/extract-assets.mjs` after editing\n" +
   "# the <style> or <script> in lib/render.js.\n\n" +
   `BASE_CSS = ${JSON.stringify(css)}\n\n` +
-  `RUNTIME_JS = ${JSON.stringify(js)}\n`;
+  `RUNTIME_JS = ${JSON.stringify(js)}\n\n` +
+  `# Browser script (run via driver.execute_script in a WebView) that snapshots\n` +
+  `# the DOM into the bounds-annotated source the live view consumes.\n` +
+  `WEB_SNAPSHOT_JS = ${JSON.stringify(WEB_SNAPSHOT_JS)}\n`;
 
 const dest = fileURLToPath(new URL("../python/src/appium_live_view/_assets.py", import.meta.url));
 writeFileSync(dest, out);

@@ -60,7 +60,20 @@ def pytest_runtest_makereport(item, call):
   acted on).
 
 Also exported: `parse_source`, `parse_coordinates`, `suggest_locators`,
-`absolute_xpath`.
+`absolute_xpath`, and `WEB_SNAPSHOT_JS`.
+
+## WebView / hybrid context
+
+In a WebView context `driver.page_source` is HTML without coordinates. Run the
+DOM snapshot script in the webview to capture tags + attributes + bounds, then
+render with `context="web"` (CSS + DOM-XPath locators):
+
+```python
+from appium_live_view import WEB_SNAPSHOT_JS, build_live_view_html
+
+source = driver.execute_script(WEB_SNAPSHOT_JS)          # in the webview context
+html = build_live_view_html(source, driver.get_screenshot_as_png(), context="web")
+```
 
 ## Notes
 

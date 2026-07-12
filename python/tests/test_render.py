@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from appium_live_view import (  # noqa: E402
+    WEB_SNAPSHOT_JS,
     absolute_xpath,
     build_live_view_html,
     parse_coordinates,
@@ -36,6 +37,15 @@ IOS_XML = """<?xml version="1.0" encoding="UTF-8"?>
     <XCUIElementTypeButton type="XCUIElementTypeButton" name="login" label="Log in" x="24" y="740" width="342" height="48"/>
   </XCUIElementTypeApplication>
 </AppiumAUT>"""
+
+WEB_XML = """<webview bounds="[0,0][390,700]">
+  <html bounds="[0,0][390,700]">
+    <body bounds="[0,0][390,700]">
+      <button id="go" class="btn primary" aria-label="Go now" text="Go" bounds="[20,100][85,142]"></button>
+      <input name="q" placeholder="Search" bounds="[20,160][370,190]"></input>
+    </body>
+  </html>
+</webview>"""
 
 PNG_1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
 
@@ -148,6 +158,27 @@ def test_build_html_structure():
     # marker + embedded source for the runtime / XPath tester
     assert 'data-appium-live-view="1"' in html
     assert 'data-src="' in html
+
+
+def test_web_context_css_dom_locators_and_overlays():
+    parsed = parse_source(WEB_XML)
+    assert parsed["root"].tag_name == "webview"
+    go = next(n for n in parsed["nodes"] if n.attributes.get("id") == "go")
+    locs = [l["value"] for l in suggest_locators(go, is_web=True)]
+    assert "#go" in locs
+    assert "button.btn.primary" in locs
+    assert 'button[aria-label="Go now"]' in locs
+    assert any(v.startswith("//button[normalize-space()='Go'") for v in locs)
+    assert "/html/body/button" in locs  # webview wrapper stripped
+    html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1)  # auto-detects web
+    assert "#go" in html
+    assert f'lv-el lv-el-{go.index}"' in html
+
+
+def test_web_snapshot_js_matches_and_is_a_script():
+    assert WEB_SNAPSHOT_JS.startswith("return (")
+    assert "getBoundingClientRect" in WEB_SNAPSHOT_JS
+    assert "bounds=" in WEB_SNAPSHOT_JS
 
 
 def test_screenshot_accepts_bytes():

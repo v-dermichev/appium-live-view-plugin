@@ -79,7 +79,7 @@ def _normalize_screenshot(screenshot: Union[bytes, bytearray, str, None]) -> str
     return f"data:image/png;base64,{screenshot}"
 
 
-def _render_panel(node: Node) -> str:
+def _render_panel(node: Node, is_web: bool = False) -> str:
     attrs = node.attributes or {}
     rows = "".join(f"<tr><th>{_escape(k)}</th><td>{_escape(v)}</td></tr>" for k, v in attrs.items())
     locators = "".join(
@@ -89,7 +89,7 @@ def _render_panel(node: Node) -> str:
             <span class="lv-loc-hint">click to copy</span></div>
           <code class="lv-loc-value">{_escape(loc["value"])}</code>
         </li>'''
-        for loc in suggest_locators(node)
+        for loc in suggest_locators(node, is_web)
     )
     rect = (
         f'<div class="lv-rect">x {node.rect["x1"]}, y {node.rect["y1"]} · {node.rect["w"]}×{node.rect["h"]}</div>'
@@ -113,6 +113,7 @@ def build_live_view_html(
     title: Optional[str] = None,
     platform_name: Optional[str] = None,
     selected_path: Optional[str] = None,
+    context: Optional[str] = None,
     parsed: Optional[dict] = None,
 ) -> str:
     """Render page source + screenshot into a standalone, interactive HTML page.
@@ -130,6 +131,11 @@ def build_live_view_html(
     drawable = [n for n in nodes if _is_box(n)]
     shot = _normalize_screenshot(screenshot)
     title = title or "Appium live view"
+    # WebView / hybrid context -> CSS + DOM-XPath locators (auto-detected from the
+    # snapshot's <webview>/<html> root, or forced with context=).
+    is_web = context == "web" or (
+        context != "native" and root is not None and root.tag_name.lower() in ("webview", "html", "body")
+    )
 
     xml_b64 = ""
     if root is not None:
@@ -192,7 +198,7 @@ def build_live_view_html(
         )
 
     tree_rows = "\n".join(_tree_row(n) for n in nodes)
-    panels = "\n".join(_render_panel(n) for n in nodes)
+    panels = "\n".join(_render_panel(n, is_web) for n in nodes)
 
     def _selection_rule(n: Node) -> str:
         css = (

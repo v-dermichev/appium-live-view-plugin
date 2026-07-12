@@ -32,6 +32,17 @@ export const IOS_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </XCUIElementTypeApplication>
 </AppiumAUT>`;
 
+// WebView / hybrid: the bounds-annotated source produced by WEB_SNAPSHOT_JS
+// (lowercase DOM tags + getBoundingClientRect bounds, under a <webview> root).
+export const WEB_XML = `<webview bounds="[0,0][390,700]">
+  <html bounds="[0,0][390,700]">
+    <body bounds="[0,0][390,700]">
+      <button id="go" class="btn primary" aria-label="Go now" text="Go" bounds="[20,100][85,142]"></button>
+      <input name="q" placeholder="Search" bounds="[20,160][370,190]"></input>
+    </body>
+  </html>
+</webview>`;
+
 // 1x1 transparent PNG — stands in for a device screenshot in tests.
 export const PNG_1x1 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC';

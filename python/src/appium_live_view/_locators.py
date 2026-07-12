@@ -36,8 +36,38 @@ def absolute_xpath(node: Node) -> str:
     return "/" + "/".join(segments)
 
 
-def suggest_locators(node: Node) -> list[dict]:
-    """Ordered ``{type, using, value}`` suggestions, most specific first."""
+import re as _re
+
+_CSS_IDENT = _re.compile(r"^[A-Za-z_][\w-]*$")
+
+
+def _css_attr_value(v: str) -> str:
+    return str(v).replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _web_locators(node: Node, a: dict, add) -> list[dict]:
+    tag = node.tag_name
+    if a.get("id"):
+        add("css", "css selector", f"#{a['id']}" if _CSS_IDENT.match(a["id"]) else f'{tag}[id="{_css_attr_value(a["id"])}"]')
+    if a.get("name"):
+        add("css", "css selector", f'{tag}[name="{_css_attr_value(a["name"])}"]')
+    if a.get("aria-label"):
+        add("css", "css selector", f'{tag}[aria-label="{_css_attr_value(a["aria-label"])}"]')
+    if a.get("class"):
+        cls = "".join(f".{c}" for c in a["class"].strip().split() if _CSS_IDENT.match(c))
+        if cls:
+            add("css", "css selector", f"{tag}{cls}")
+    if a.get("text"):
+        add("xpath", "xpath", f"//{tag}[normalize-space()={xpath_literal(a['text'])}]")
+    # absolute XPath, minus the synthetic <webview> wrapper -> a real DOM path
+    add("xpath (absolute)", "xpath", _re.sub(r"^/webview", "", absolute_xpath(node)))
+
+
+def suggest_locators(node: Node, is_web: bool = False) -> list[dict]:
+    """Ordered ``{type, using, value}`` suggestions, most specific first.
+
+    ``is_web`` switches to WebView / hybrid (DOM) locators: CSS selectors + DOM XPath.
+    """
     a = node.attributes or {}
     out: list[dict] = []
     seen: set[str] = set()
@@ -50,6 +80,10 @@ def suggest_locators(node: Node) -> list[dict]:
             return
         seen.add(key)
         out.append({"type": type_, "using": using, "value": value})
+
+    if is_web:
+        _web_locators(node, a, add)
+        return out
 
     add("accessibility id", "accessibility id", a.get(_ANDROID_DESC) or a.get(_IOS_NAME))
     add("id", "id", a.get(_ANDROID_ID))
