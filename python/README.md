@@ -51,7 +51,7 @@ def pytest_runtest_makereport(item, call):
 
 ## API
 
-`build_live_view_html(xml=None, screenshot=None, *, title=None, platform_name=None, selected_path=None, context=None, webview_rect=None, parsed=None) -> str`
+`build_live_view_html(xml=None, screenshot=None, *, title=None, platform_name=None, selected_path=None, context=None, webview_rect=None, mode=None, parsed=None) -> str`
 
 - `xml` — Appium page source (`driver.page_source`).
 - `screenshot` — raw PNG `bytes`, a base64 `str`, or a full `data:` URI. Optional
@@ -64,6 +64,11 @@ def pytest_runtest_makereport(item, call):
   on-screen rectangle, for a full-device screenshot (iOS Safari / a hybrid WebView
   below a native bar). Overlays are offset by `x`/`y`. Not needed for a
   web-viewport screenshot (Android Chrome).
+- `mode` — `"js"` to emit a near-empty shell (screenshot + embedded source +
+  runtime) and rebuild the overlays/tree/panels on load instead of pre-rendering
+  them. Much smaller on large pages, but needs JavaScript — the attachment opened
+  standalone, or the [Allure report patch](../examples/allure-inline-interactive/)
+  inline. Default is the pure-CSS view that also works with no JS.
 
 Also exported: `parse_source`, `parse_coordinates`, `suggest_locators`,
 `absolute_xpath`, and `WEB_SNAPSHOT_JS`.

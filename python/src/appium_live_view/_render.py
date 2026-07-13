@@ -12,7 +12,7 @@ import binascii
 import re
 from typing import Optional, Union
 
-from ._assets import BASE_CSS, RUNTIME_JS
+from ._assets import BASE_CSS, RUNTIME_JS, RUNTIME_VIEW_JS
 from ._locators import suggest_locators
 from ._parse import Node, parse_source
 
@@ -133,6 +133,7 @@ def build_live_view_html(
     selected_path: Optional[str] = None,
     context: Optional[str] = None,
     webview_rect: Optional[dict] = None,
+    mode: Optional[str] = None,
     parsed: Optional[dict] = None,
 ) -> str:
     """Render page source + screenshot into a standalone, interactive HTML page.
@@ -253,6 +254,16 @@ def build_live_view_html(
     tree_rows = "\n".join(_tree_row(n) for n in nodes)
     panels = "\n".join(_render_panel(n, is_web) for n in nodes)
 
+    # JS mode: ship a near-empty shell (no per-node overlays/tree/panels/CSS); the
+    # runtime rebuilds them from the embedded source on load. Needs JS (standalone
+    # attachment script, or the Allure report patch inline). Default stays pure-CSS.
+    js_mode = mode == "js"
+    if js_mode:
+        radios = '<input type="checkbox" id="lv-tree-toggle" class="lv-r">'
+        overlays = ""
+        tree_rows = ""
+        panels = ""
+
     def _selection_rule(n: Node) -> str:
         css = (
             f"#lv-r-{n.index}:checked~.lv-main .lv-panel-{n.index}{{display:block}}"
@@ -264,7 +275,15 @@ def build_live_view_html(
             css += f"#lv-r-{n.index}:checked~.lv-main .lv-el-{n.index}{{display:block;outline:2px dotted #e5484d;background:rgba(229,72,77,.1);z-index:2000000}}"
         return css
 
-    selection_css = "".join(_selection_rule(n) for n in nodes)
+    selection_css = "" if js_mode else "".join(_selection_rule(n) for n in nodes)
+    js_attrs = ""
+    if js_mode:
+        js_attrs = (
+            f' data-lv-js="1" data-ext="{extents["width"]}x{extents["height"]}"'
+            f' data-off="{offset["x"]},{offset["y"]}" data-web="{1 if is_web else 0}"'
+        )
+        if selected is not None:
+            js_attrs += f' data-sel="{selected.index}"'
 
     meta = " · ".join(
         p
@@ -311,7 +330,7 @@ def build_live_view_html(
 </head>
 <body>
 <style>{BASE_CSS}{selection_css}</style>
-<div class="{root_cls}" data-appium-live-view="1" data-src="{xml_b64}">
+<div class="{root_cls}" data-appium-live-view="1" data-src="{xml_b64}"{js_attrs}>
 {radios}
 <div class="lv-head">
   <h1>{_escape(title)}</h1>
@@ -343,6 +362,6 @@ def build_live_view_html(
   </div>
 </div>
 </div>
-<script>{RUNTIME_JS}</script>
+<script>{RUNTIME_JS}{RUNTIME_VIEW_JS if js_mode else ""}</script>
 </body>
 </html>"""

@@ -8,12 +8,15 @@ import { fileURLToPath } from "node:url";
 
 import { buildLiveViewHtml } from "../lib/render.js";
 import { WEB_SNAPSHOT_JS } from "../lib/web-snapshot.js";
+import { lvBuildView } from "../lib/runtime-view.js";
 
 // Rendering with no source yields the static CSS (empty per-node selection rules)
 // and the full runtime script — exactly the parts that are language-independent.
 const html = buildLiveViewHtml({ xml: "", screenshot: "" });
 const css = html.match(/<style>([\s\S]*?)<\/style>/)[1];
 const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+// The JS-mode view builder, appended to the runtime only when mode:"js" is used.
+const viewJs = `(${lvBuildView.toString()})();`;
 
 // JSON.stringify output is also a valid Python string literal.
 const out =
@@ -23,6 +26,9 @@ const out =
   "# the <style> or <script> in lib/render.js.\n\n" +
   `BASE_CSS = ${JSON.stringify(css)}\n\n` +
   `RUNTIME_JS = ${JSON.stringify(js)}\n\n` +
+  `# Appended to RUNTIME_JS only in JS mode: rebuilds overlays/tree/panels from the\n` +
+  `# embedded source on load (so the shipped HTML can omit them).\n` +
+  `RUNTIME_VIEW_JS = ${JSON.stringify(viewJs)}\n\n` +
   `# Browser script (run via driver.execute_script in a WebView) that snapshots\n` +
   `# the DOM into the bounds-annotated source the live view consumes.\n` +
   `WEB_SNAPSHOT_JS = ${JSON.stringify(WEB_SNAPSHOT_JS)}\n`;

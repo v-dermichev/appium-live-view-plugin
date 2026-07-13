@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Versions follow
 [semantic versioning](https://semver.org/). The npm plugin, the JS renderer and
 the Python package (`appium-live-view` on PyPI) share one version.
 
+## [0.1.4] — 2026-07-13
+
+### Added
+
+- **Optional JS mode (`mode: "js"`).** For large pages, `buildLiveViewHtml` /
+  `build_live_view_html` can emit a near-empty shell — screenshot + embedded source
+  + runtime — and rebuild the overlays, source tree and detail panels on load
+  instead of pre-rendering them. Roughly halves a big attachment (and up to ~75%
+  when the screenshot isn't the dominant cost). It needs JavaScript, so it works
+  when the attachment is opened standalone or when the Allure report patch runs it
+  inline; the default stays the pure-CSS view that also works with no JS. The
+  browser builder lives in `lib/runtime-view.js` and is shared verbatim by the
+  attachment's own script and the report patch.
+
 ## [0.1.3] — 2026-07-13
 
 ### Changed

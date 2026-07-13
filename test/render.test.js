@@ -89,7 +89,7 @@ test('overlays cover drawable nodes; panels, radios and tree rows cover every no
 
   assert.ok(html.startsWith('<!doctype html>'));
   // Overlays only for elements with bounds.
-  assert.equal((html.match(/class="lv-el /g) || []).length, drawable.length);
+  assert.equal((html.match(/class="lv-el lv-el-\d/g) || []).length, drawable.length);
   // Panels, selection radios and tree rows for every node — so non-drawable /
   // covered elements are still selectable via the source tree.
   assert.equal((html.match(/class="lv-panel lv-panel-\d/g) || []).length, all.length);
@@ -268,6 +268,34 @@ test('CSS class selector capped to 3; locator cards carry no data-copy or hint m
   const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1 });
   assert.ok(!/data-copy/.test(html), 'no duplicated data-copy attribute (copy reads the <code> text)');
   assert.ok(!/lv-loc-hint/.test(html), '"click to copy" hint is CSS, not per-card markup');
+});
+
+test('mode:js emits a small shell (source + geometry, no per-node markup)', () => {
+  const parsed = parseSource(ANDROID_XML);
+  const js = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, mode: 'js' });
+  // The win scales with node count — measure it on a large page, not the fixture.
+  const rows = Array.from(
+    { length: 200 },
+    (_, i) =>
+      `<div id="n${i}" class="row item box" bounds="[0,${i * 20}][400,${i * 20 + 18}]">` +
+      `<span text="cell number ${i}" bounds="[4,${i * 20}][300,${i * 20 + 18}]"></span></div>`,
+  ).join('');
+  const bigXml = `<webview bounds="[0,0][400,4000]"><html bounds="[0,0][400,4000]"><body bounds="[0,0][400,4000]">${rows}</body></html></webview>`;
+  const bigFull = buildLiveViewHtml({ xml: bigXml, screenshot: PNG_1x1 });
+  const bigJs = buildLiveViewHtml({ xml: bigXml, screenshot: PNG_1x1, mode: 'js' });
+  assert.ok(bigJs.length < bigFull.length * 0.6, 'js mode is much smaller on a large page');
+  assert.match(js, /data-lv-js="1"/, 'root marked for the runtime builder');
+  assert.match(js, /data-ext="\d+x\d+"/, 'carries the coordinate space');
+  assert.match(js, /data-src="/, 'still carries the embedded source');
+  // No pre-rendered per-node overlays / panels / tree rows / selection radios.
+  assert.equal((js.match(/class="lv-el lv-el-\d/g) || []).length, 0);
+  assert.equal((js.match(/class="lv-panel lv-panel-\d/g) || []).length, 0);
+  assert.equal((js.match(/class="lv-node lv-node-\d/g) || []).length, 0);
+  assert.equal((js.match(/name="lv-sel"/g) || []).length, 0);
+  // A pre-selected element is passed to the runtime by index.
+  const login = parsed.nodes.find((n) => n.attributes['resource-id']?.endsWith('/login'));
+  const jsSel = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, mode: 'js', selectedPath: login.path });
+  assert.match(jsSel, new RegExp(`data-sel="${login.index}"`));
 });
 
 test('WEB_SNAPSHOT_JS is a browser snapshot script', () => {

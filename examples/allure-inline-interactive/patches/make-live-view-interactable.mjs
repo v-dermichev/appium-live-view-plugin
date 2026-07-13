@@ -1,6 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+// The JS-mode view builder, shared verbatim with the attachment's own runtime so
+// inline (patched) and standalone stay identical.
+import { lvBuildView } from "../../../lib/runtime-view.js";
+
 const MARKER = "data-appium-live-view-runtime";
 
 // Browser-side runtime that makes appium-live-view HTML attachments interactive
@@ -22,7 +26,10 @@ const MARKER = "data-appium-live-view-runtime";
 // and the injected script runs INSIDE the iframe. Everything it needs survives
 // DOMPurify: the marker, data-src (page source, base64), the stylesheet, the
 // overlays, the locator cards and the locator tester input.
-function liveViewRuntime() {
+// `builderInvoke` is the JS-mode view builder as a self-invoking source string,
+// baked in at generate time (lvBuildView is a Node import — not available in the
+// browser, so it must be passed in, not referenced here).
+function liveViewRuntime(builderInvoke) {
   // Runs INSIDE the swapped iframe (self-contained). Wires copy-on-click for
   // locator cards and the XPath tester; toggles the .lv-copied / .lv-xhit classes
   // the attachment's own stylesheet already defines.
@@ -311,7 +318,10 @@ function liveViewRuntime() {
   // literal script-end-tag — otherwise it would close the runtime's own inlined
   // script tag in index.html when serialized. (Do not write the tag out in this
   // comment either, for the same reason.)
-  const injectedScript = "<scr" + "ipt>(" + interact.toString() + ")();</scr" + "ipt>";
+  // In JS mode the attachment is a near-empty shell; rebuild the view first (via
+  // the passed-in builder source), then wire interactivity. The builder no-ops on
+  // a normal (CSS-mode) attachment.
+  const injectedScript = "<scr" + "ipt>" + builderInvoke + "(" + interact.toString() + ")();</scr" + "ipt>";
 
   // Allure sizes html-attachment iframes with `flex:1;min-height:0`, collapsing
   // them to a thin strip (even in fullscreen). For OUR frames only, we override
@@ -416,6 +426,9 @@ export default function makeLiveViewInteractable({ outDir }) {
   const index = join(outDir, "index.html");
   const html = readFileSync(index, "utf8");
   if (html.includes(MARKER)) return;
-  const tag = `<script ${MARKER}>(${liveViewRuntime.toString()})();</script>`;
+  // Bake the JS-mode builder source in at generate time and pass it into the
+  // runtime as a string (lvBuildView is Node-only; the runtime runs in the browser).
+  const builderInvoke = `(${lvBuildView.toString()})();`;
+  const tag = `<script ${MARKER}>(${liveViewRuntime.toString()})(${JSON.stringify(builderInvoke)});</script>`;
   writeFileSync(index, html.replace("</body>", `    ${tag}\n</body>`));
 }

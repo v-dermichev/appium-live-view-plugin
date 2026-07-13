@@ -148,9 +148,9 @@ def test_build_html_structure():
     import re
 
     assert html.startswith("<!doctype html>")
-    assert html.count('class="lv-el ') == len(drawable)                        # overlays: drawable only
+    assert len(re.findall(r'class="lv-el lv-el-\d', html)) == len(drawable)     # overlays: drawable only
     assert len(re.findall(r'class="lv-panel lv-panel-\d', html)) == len(nodes)  # panels: every node (excl. -none)
-    assert html.count('class="lv-node lv-node-') == len(nodes)                 # tree rows: every node
+    assert len(re.findall(r'class="lv-node lv-node-\d', html)) == len(nodes)    # tree rows: every node
     assert html.count('name="lv-sel"') == len(nodes) + 1                       # radios + "none"
     assert f"data:image/png;base64,{PNG_1x1}" in html
     # full tag name in the tree (not truncated)
@@ -269,6 +269,33 @@ def test_css_class_capped_and_no_data_copy():
     html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1)
     assert "data-copy" not in html  # copy reads the <code> text instead
     assert "lv-loc-hint" not in html  # hint is CSS, not per-card markup
+
+
+def test_mode_js_emits_small_shell():
+    import re
+
+    parsed = parse_source(ANDROID_XML)
+    js = build_live_view_html(parsed=parsed, screenshot=PNG_1x1, mode="js")
+    # The win scales with node count — measure it on a large page.
+    rows = "".join(
+        f'<div id="n{i}" class="row item box" bounds="[0,{i * 20}][400,{i * 20 + 18}]">'
+        f'<span text="cell number {i}" bounds="[4,{i * 20}][300,{i * 20 + 18}]"></span></div>'
+        for i in range(200)
+    )
+    big_xml = f'<webview bounds="[0,0][400,4000]"><html bounds="[0,0][400,4000]"><body bounds="[0,0][400,4000]">{rows}</body></html></webview>'
+    big_full = build_live_view_html(big_xml, PNG_1x1)
+    big_js = build_live_view_html(big_xml, PNG_1x1, mode="js")
+    assert len(big_js) < len(big_full) * 0.6
+    assert 'data-lv-js="1"' in js
+    assert re.search(r'data-ext="\d+x\d+"', js)
+    assert 'data-src="' in js
+    assert len(re.findall(r'class="lv-el lv-el-\d', js)) == 0
+    assert len(re.findall(r'class="lv-panel lv-panel-\d', js)) == 0
+    assert len(re.findall(r'class="lv-node lv-node-\d', js)) == 0
+    assert js.count('name="lv-sel"') == 0
+    login = next(n for n in parsed["nodes"] if n.attributes.get("resource-id", "").endswith("/login"))
+    js_sel = build_live_view_html(parsed=parsed, screenshot=PNG_1x1, mode="js", selected_path=login.path)
+    assert f'data-sel="{login.index}"' in js_sel
 
 
 def test_web_snapshot_js_matches_and_is_a_script():

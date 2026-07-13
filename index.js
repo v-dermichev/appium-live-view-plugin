@@ -14,7 +14,7 @@ import { BasePlugin } from '@appium/base-plugin';
 
 import { buildLiveViewHtml } from './lib/render.js';
 
-const PLUGIN_VERSION = '0.1.3';
+const PLUGIN_VERSION = '0.1.4';
 
 class LiveViewPlugin extends BasePlugin {
   static executeMethodMap = {
