@@ -175,10 +175,93 @@ def test_web_context_css_dom_locators_and_overlays():
     assert f'lv-el lv-el-{go.index}"' in html
 
 
+def test_web_coordinate_space_from_screenshot_not_innerheight():
+    import struct
+
+    def fake_png(w, h):
+        b = bytearray(24)
+        struct.pack_into(">I", b, 0, 0x89504E47)  # PNG signature start
+        struct.pack_into(">I", b, 16, w)
+        struct.pack_into(">I", b, 20, h)
+        return "data:image/png;base64," + base64.b64encode(bytes(b)).decode()
+
+    # Snapshot innerHeight=500, but screenshot 720x1200 px @ dpr 2 => 360x600 css.
+    xml = (
+        '<webview dpr="2" bounds="[0,0][360,500]">'
+        '<html bounds="[0,0][360,500]"><body bounds="[0,0][360,500]">'
+        '<button id="b" bounds="[0,300][360,360]"></button>'
+        "</body></html></webview>"
+    )
+    html = build_live_view_html(xml, fake_png(720, 1200), context="web")
+    assert "aspect-ratio:360 / 600" in html  # from screenshot css size
+    assert "top:50.0000%" in html  # button y1=300 of 600, not 300/500=60%
+    assert "top:60.0000%" not in html
+
+
+def test_web_webview_rect_offsets_overlays_full_device():
+    import struct
+
+    def fake_png(w, h):
+        b = bytearray(24)
+        struct.pack_into(">I", b, 0, 0x89504E47)
+        struct.pack_into(">I", b, 16, w)
+        struct.pack_into(">I", b, 20, h)
+        return "data:image/png;base64," + base64.b64encode(bytes(b)).decode()
+
+    xml = (
+        '<webview dpr="1" bounds="[0,0][393,659]" screen="[0,0][393,852]">'
+        '<html bounds="[0,0][393,659]"><body bounds="[0,0][393,659]">'
+        '<button id="b" bounds="[0,100][393,140]"></button>'
+        "</body></html></webview>"
+    )
+    png = fake_png(393, 852)
+    off = build_live_view_html(xml, png, context="web", webview_rect={"x": 0, "y": 59})
+    assert "top:18.6620%" in off  # (100+59)/852
+    no_off = build_live_view_html(xml, png, context="web")
+    assert "top:11.7371%" in no_off  # 100/852, no auto-offset
+
+
+def test_landscape_screenshot_gets_stacked_layout_class():
+    import struct
+
+    def fake_png(w, h):
+        b = bytearray(24)
+        struct.pack_into(">I", b, 0, 0x89504E47)
+        struct.pack_into(">I", b, 16, w)
+        struct.pack_into(">I", b, 20, h)
+        return "data:image/png;base64," + base64.b64encode(bytes(b)).decode()
+
+    wide = build_live_view_html(
+        '<webview dpr="1" bounds="[0,0][900,500]"><html bounds="[0,0][900,500]"></html></webview>',
+        fake_png(900, 500), context="web",
+    )
+    assert 'class="lv-root lv-landscape"' in wide
+    tall = build_live_view_html(
+        '<webview dpr="1" bounds="[0,0][500,900]"><html bounds="[0,0][500,900]"></html></webview>',
+        fake_png(500, 900), context="web",
+    )
+    assert 'class="lv-root"' in tall
+    assert 'class="lv-root lv-landscape"' not in tall
+
+
+def test_locator_tester_css_web_only_and_hint_above_stage():
+    import re
+
+    web = build_live_view_html(WEB_XML, PNG_1x1)
+    assert 'id="lv-find"' in web
+    assert '<option value="css">CSS</option><option value="xpath">XPath</option>' in web
+    assert re.search(r'<div class="lv-stagecol">\s*<div class="lv-hint">', web)
+    native = build_live_view_html(ANDROID_XML, PNG_1x1)
+    assert '<option value="css">' not in native
+    assert '<select id="lv-strat" class="lv-strat" aria-label="Locator strategy"><option value="xpath">XPath</option>' in native
+
+
 def test_web_snapshot_js_matches_and_is_a_script():
     assert WEB_SNAPSHOT_JS.startswith("return (")
     assert "getBoundingClientRect" in WEB_SNAPSHOT_JS
     assert "bounds=" in WEB_SNAPSHOT_JS
+    assert "dpr=" in WEB_SNAPSHOT_JS
+    assert "screen=" in WEB_SNAPSHOT_JS
 
 
 def test_screenshot_accepts_bytes():
@@ -198,3 +281,6 @@ def test_selected_path_prechecks_radio():
     html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1, selected_path=login.path)
     assert f'id="lv-r-{login.index}" class="lv-r" checked' in html
     assert 'id="lv-none" class="lv-r" checked' not in html
+    # the "hover an element" placeholder is hidden unless nothing is selected
+    assert ".lv-hint{display:none" in html
+    assert "#lv-none:checked~.lv-main .lv-hint{display:block}" in html

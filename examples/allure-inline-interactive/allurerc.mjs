@@ -25,7 +25,7 @@ export default {
       options: {
         // Flip to true for a single self-contained index.html. The inline
         // interactivity patch works for both served and single-file reports.
-        singleFile: false,
+        singleFile: true,
       },
     },
   },

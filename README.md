@@ -127,8 +127,10 @@ and the XPath tester.
 - **Click** an element → pin it; the panel shows its attributes and suggested
   locators.
 - **Click a locator** → copies it (whole card is the target; shows `Copied ✓`).
-- **XPath tester** (top-right) → type an XPath to highlight all matching
-  elements; the status shows the match count, `no match`, or `invalid XPath`.
+- **Locator tester** (top-right) → pick **CSS** or **XPath** from the dropdown and
+  type a locator to highlight all matching elements; the status shows the match
+  count, `no match`, or `invalid`. In a WebView context the suggested locators
+  (CSS and absolute XPath) resolve here just as they do on the real page.
 - **Source** (header) → toggle a source tree where **every** node is selectable
   — including elements with no bounds, or hidden behind others, that can't be
   clicked on the screenshot. Selecting a row pins the element and shows its panel.
@@ -220,6 +222,20 @@ html = build_live_view_html(source, driver.get_screenshot_as_png(), context="web
 `context` is auto-detected from the snapshot's `<webview>` root; pass
 `context="web"`/`"native"` to force it.
 
+The snapshot records on-device geometry (`devicePixelRatio`, viewport, `screen`
+size) so the renderer scales overlays per device — a **web-viewport** screenshot
+(Android Chrome) lines up automatically. A **full-device** screenshot (iOS Safari,
+with its status bar + toolbar, or a hybrid WebView sitting below a native bar) has
+the web content offset from the top; that offset isn't visible to the page
+(`window.screenY` and safe-area insets read 0), so pass the WebView's on-screen
+rectangle — e.g. from Appium's native context — as `webviewRect` / `webview_rect`:
+
+```js
+// native context: rect of the WebView element on screen (CSS px)
+const html = buildLiveViewHtml({ xml: source, screenshot: shot, context: 'web',
+  webviewRect: { x: 0, y: 59, width: 393, height: 659 } });
+```
+
 ![WebView live view](docs/web-live-view.png)
 
 ## Limitations
@@ -227,8 +243,12 @@ html = build_live_view_html(source, driver.get_screenshot_as_png(), context="web
 - Inline in Allure, only CSS interactions run by default (hover + click-pin);
   copy and the XPath tester need JS — available when the attachment is opened
   standalone, or inline via the optional report patch above (script sandbox).
-- WebView overlays line up with a **web-viewport** screenshot; a full device
-  screenshot (with native chrome above the webview) would need an offset.
+- WebView overlays scale per device from the screenshot's pixel size ÷ the
+  snapshot's `devicePixelRatio`, so a moving mobile URL bar (which changes
+  `innerHeight`) and a device switch don't skew them. A **web-viewport** screenshot
+  (Android Chrome) aligns with no extra input; a **full-device** screenshot (iOS
+  Safari, or a hybrid WebView below a native bar) needs the WebView's on-screen
+  offset passed as `webviewRect` — it can't be read from the page.
 - Overlap handling is DOM stacking (smaller/deeper element wins hit-testing), not
   the centroid fan-out Appium Inspector draws for exactly-overlapping elements.
 

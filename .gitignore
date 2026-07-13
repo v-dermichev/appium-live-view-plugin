@@ -20,3 +20,6 @@ screenshot.png
 
 # local iOS check artifacts (real screenshot — never commit)
 examples/allure-inline-interactive/ios-*
+
+# local web example artifacts
+examples/allure-inline-interactive/web-*

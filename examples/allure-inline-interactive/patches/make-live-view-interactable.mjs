@@ -82,6 +82,12 @@ function liveViewRuntime() {
       }
     });
 
+    // Locator tester — kept in sync with lib/render.js's runtime (the attachment's
+    // own <script> is stripped inline, so this report-side copy provides it). One
+    // input + a CSS/XPath dropdown, evaluated against an HTML mirror of the source
+    // rooted at the page's <html> (the <webview> wrapper stripped) so the SAME
+    // locators shown in the panel resolve; each mirror element carries its node
+    // index (data-lvi) for highlighting.
     let xdoc = null;
     let xels = null;
     const b64 = root.getAttribute("data-src");
@@ -94,8 +100,36 @@ function liveViewRuntime() {
         xdoc = null;
       }
     }
-    const input = document.getElementById("lv-xpath");
-    const statusEl = document.getElementById("lv-xstat");
+    let lvEval = null;
+    if (xdoc) {
+      try {
+        const srcRoot = xdoc.querySelector("html") || xdoc.documentElement;
+        const edoc = document.implementation.createHTMLDocument("");
+        const mirror = (x) => {
+          const el = edoc.createElement(x.tagName);
+          const k = Array.prototype.indexOf.call(xels, x);
+          if (k >= 0) el.setAttribute("data-lvi", String(k));
+          for (let i = 0; i < x.attributes.length; i++) {
+            const a = x.attributes[i];
+            if (a.name === "data-lvi") continue;
+            try {
+              el.setAttribute(a.name, a.value);
+            } catch (e) {
+              /* ignore */
+            }
+          }
+          for (let c = x.firstElementChild; c; c = c.nextElementSibling) el.appendChild(mirror(c));
+          return el;
+        };
+        edoc.replaceChild(mirror(srcRoot), edoc.documentElement);
+        lvEval = edoc;
+      } catch (err) {
+        lvEval = null;
+      }
+    }
+    const input = document.getElementById("lv-find");
+    const statusEl = document.getElementById("lv-fstat");
+    const stratEl = document.getElementById("lv-strat");
     const setStatus = (t, cls) => {
       if (statusEl) {
         statusEl.textContent = t;
@@ -109,28 +143,49 @@ function liveViewRuntime() {
         hits[i].classList.remove("lv-node-hit");
       }
     };
-    const run = (q) => {
-      clearHits();
-      if (!q) return setStatus("");
-      if (!xdoc) return setStatus("source unavailable", "err");
-      let res;
-      try {
-        res = xdoc.evaluate(q, xdoc, null, 7, null);
-      } catch (err) {
-        return setStatus("invalid XPath", "err");
+    const mark = (el) => {
+      const idx = el && el.getAttribute ? el.getAttribute("data-lvi") : null;
+      if (idx == null) return null;
+      const tn = document.querySelector(".lv-node-" + idx);
+      if (tn) tn.classList.add("lv-node-hit");
+      const ov = document.querySelector(".lv-el-" + idx);
+      if (ov) {
+        ov.classList.add("lv-xhit");
+        return ov;
       }
-      const n = res.snapshotLength;
+      return null;
+    };
+    const run = () => {
+      clearHits();
+      const q = input ? input.value.trim() : "";
+      const strat = stratEl ? stratEl.value : "xpath";
+      if (!q) return setStatus("");
+      if (!lvEval) return setStatus("source unavailable", "err");
+      const matches = [];
+      if (strat === "css") {
+        let res;
+        try {
+          res = lvEval.querySelectorAll(q);
+        } catch (err) {
+          return setStatus("invalid selector", "err");
+        }
+        for (let i = 0; i < res.length; i++) matches.push(res[i]);
+      } else {
+        let r;
+        try {
+          r = lvEval.evaluate(q, lvEval, null, 7, null);
+        } catch (err) {
+          return setStatus("invalid XPath", "err");
+        }
+        for (let j = 0; j < r.snapshotLength; j++) matches.push(r.snapshotItem(j));
+      }
+      const n = matches.length;
       if (!n) return setStatus("no match", "warn");
       let drawn = 0;
       let first = null;
-      for (let i = 0; i < n; i++) {
-        const idx = Array.prototype.indexOf.call(xels, res.snapshotItem(i));
-        if (idx < 0) continue;
-        const tn = document.querySelector(".lv-node-" + idx);
-        if (tn) tn.classList.add("lv-node-hit");
-        const ov = document.querySelector(".lv-el-" + idx);
+      for (let m = 0; m < n; m++) {
+        const ov = mark(matches[m]);
         if (ov) {
-          ov.classList.add("lv-xhit");
           drawn++;
           if (!first) first = ov;
         }
@@ -142,16 +197,23 @@ function liveViewRuntime() {
       let t;
       input.addEventListener("input", () => {
         clearTimeout(t);
-        t = setTimeout(() => run(input.value.trim()), 200);
+        t = setTimeout(run, 200);
       });
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          run(input.value.trim());
+          run();
         }
       });
-      if (input.value) run(input.value.trim()); // support a pre-filled XPath
     }
+    if (stratEl) {
+      stratEl.addEventListener("change", () => {
+        if (input)
+          input.placeholder = stratEl.value === "css" ? "Test CSS, e.g. input[name=q]" : "Test XPath, e.g. //*[@text='OK']";
+        run();
+      });
+    }
+    if (input && input.value) run();
 
     // Header tools: give the XML/Image links real (blob) hrefs so they behave
     // like links — click to open, Ctrl/Cmd-click for a new tab, right-click to
@@ -227,9 +289,20 @@ function liveViewRuntime() {
     };
     setTimeout(reportHeight, 50);
     setTimeout(reportHeight, 400);
+    setTimeout(reportHeight, 1200);
     window.addEventListener("resize", reportHeight);
     document.addEventListener("change", () => setTimeout(reportHeight, 60));
     document.addEventListener("click", () => setTimeout(reportHeight, 60));
+    // Expanding the attachment re-lays-out the frame without a child event; a
+    // ResizeObserver + visibility hook re-report so the parent can re-fit.
+    document.addEventListener("visibilitychange", reportHeight);
+    if (window.ResizeObserver) {
+      try {
+        new ResizeObserver(reportHeight).observe(document.documentElement);
+      } catch (e) {
+        /* ignore */
+      }
+    }
   }
 
   // Build the script tag injected into the srcdoc. The opening/closing tags are
@@ -266,11 +339,27 @@ function liveViewRuntime() {
     if (!e.data || typeof e.data.appiumLiveViewHeight !== "number") return;
     for (let i = 0; i < lvFrames.length; i++) {
       if (lvFrames[i].contentWindow === e.source) {
+        lvFrames[i].__lvHeight = e.data.appiumLiveViewHeight;
         fitFrame(lvFrames[i], e.data.appiumLiveViewHeight);
         break;
       }
     }
   });
+  // Allure re-applies its own iframe sizing when an attachment is expanded or
+  // re-rendered, collapsing our frame back to the thin default strip. Re-assert
+  // the fit from the last reported height whenever a frame is shorter than it —
+  // this is what makes "expand" reliably show full height instead of the preview.
+  function refit() {
+    for (let i = 0; i < lvFrames.length; i++) {
+      const f = lvFrames[i];
+      if (!f.__lvHeight || !f.isConnected) continue;
+      if (Math.round(f.getBoundingClientRect().height) < f.__lvHeight - 4) {
+        fitFrame(f, f.__lvHeight);
+      }
+    }
+  }
+  setInterval(refit, 400);
+  window.addEventListener("resize", refit);
 
   function enhance(frame) {
     if (frame.__lvEnhanced) return;

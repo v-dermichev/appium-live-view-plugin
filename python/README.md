@@ -51,13 +51,19 @@ def pytest_runtest_makereport(item, call):
 
 ## API
 
-`build_live_view_html(xml=None, screenshot=None, *, title=None, platform_name=None, selected_path=None, parsed=None) -> str`
+`build_live_view_html(xml=None, screenshot=None, *, title=None, platform_name=None, selected_path=None, context=None, webview_rect=None, parsed=None) -> str`
 
 - `xml` — Appium page source (`driver.page_source`).
 - `screenshot` — raw PNG `bytes`, a base64 `str`, or a full `data:` URI. Optional
   (overlays still work without it).
 - `selected_path` — dot-separated node path to pre-select (e.g. the element a step
   acted on).
+- `context` — `"web"` / `"native"` to force locator style + coordinate handling
+  (else auto-detected from the snapshot root).
+- `webview_rect` — `{"x", "y", "width", "height"}` in CSS px: the WebView's
+  on-screen rectangle, for a full-device screenshot (iOS Safari / a hybrid WebView
+  below a native bar). Overlays are offset by `x`/`y`. Not needed for a
+  web-viewport screenshot (Android Chrome).
 
 Also exported: `parse_source`, `parse_coordinates`, `suggest_locators`,
 `absolute_xpath`, and `WEB_SNAPSHOT_JS`.
@@ -73,6 +79,20 @@ from appium_live_view import WEB_SNAPSHOT_JS, build_live_view_html
 
 source = driver.execute_script(WEB_SNAPSHOT_JS)          # in the webview context
 html = build_live_view_html(source, driver.get_screenshot_as_png(), context="web")
+```
+
+The snapshot records on-device geometry (`devicePixelRatio`, viewport, `screen`
+size), so overlays scale per device and a **web-viewport** screenshot (Android
+Chrome) lines up automatically. A **full-device** screenshot (iOS Safari, or a
+hybrid WebView below a native bar) has the web content offset from the top; that
+offset isn't visible to the page, so pass the WebView's on-screen rectangle (CSS
+px, e.g. from Appium's native context) as `webview_rect`:
+
+```python
+html = build_live_view_html(
+    source, driver.get_screenshot_as_png(), context="web",
+    webview_rect={"x": 0, "y": 59, "width": 393, "height": 659},
+)
 ```
 
 ## Notes

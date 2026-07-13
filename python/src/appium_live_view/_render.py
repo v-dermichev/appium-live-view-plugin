@@ -8,6 +8,8 @@ generates the per-node HTML (overlays, panels, source tree, selection rules).
 from __future__ import annotations
 
 import base64
+import binascii
+import re
 from typing import Optional, Union
 
 from ._assets import BASE_CSS, RUNTIME_JS
@@ -79,6 +81,23 @@ def _normalize_screenshot(screenshot: Union[bytes, bytearray, str, None]) -> str
     return f"data:image/png;base64,{screenshot}"
 
 
+def _png_size(data_uri: str):
+    """Pixel (width, height) of a base64 PNG data URI from its IHDR, or None."""
+    prefix = "data:image/png;base64,"
+    if not data_uri.startswith(prefix):
+        return None
+    try:
+        buf = base64.b64decode(data_uri[len(prefix):])
+    except (ValueError, binascii.Error):
+        return None
+    if len(buf) < 24 or buf[:4] != b"\x89PNG":
+        return None
+    return (
+        int.from_bytes(buf[16:20], "big"),
+        int.from_bytes(buf[20:24], "big"),
+    )
+
+
 def _render_panel(node: Node, is_web: bool = False) -> str:
     attrs = node.attributes or {}
     rows = "".join(f"<tr><th>{_escape(k)}</th><td>{_escape(v)}</td></tr>" for k, v in attrs.items())
@@ -114,6 +133,7 @@ def build_live_view_html(
     platform_name: Optional[str] = None,
     selected_path: Optional[str] = None,
     context: Optional[str] = None,
+    webview_rect: Optional[dict] = None,
     parsed: Optional[dict] = None,
 ) -> str:
     """Render page source + screenshot into a standalone, interactive HTML page.
@@ -136,6 +156,40 @@ def build_live_view_html(
     is_web = context == "web" or (
         context != "native" and root is not None and root.tag_name.lower() in ("webview", "html", "body")
     )
+    # Web coordinate space comes from the screenshot's own pixel size (÷ dpr): the
+    # mobile URL bar can make the snapshot's innerHeight differ from the viewport
+    # the screenshot captures, and the overlays are drawn over the screenshot.
+    if is_web and shot and root is not None and (root.attributes or {}).get("dpr"):
+        size = _png_size(shot)
+        if size:
+            try:
+                dpr = float(root.attributes["dpr"]) or 1.0
+            except ValueError:
+                dpr = 1.0
+            extents = {"width": round(size[0] / dpr), "height": round(size[1] / dpr)}
+
+    # Where the web content sits within the screenshot. A web-viewport screenshot
+    # (Android Chrome) starts at (0,0). A full-device screenshot (iOS Safari, or a
+    # hybrid WebView below a native bar) puts the content lower -- detected when the
+    # screenshot matches the device ``screen`` size, not the viewport. The offset
+    # can't be read from the page (safe-area insets report 0), so it's supplied via
+    # ``webview_rect`` (e.g. the WebView element's on-screen rect from Appium's
+    # native context); overlays are shifted by it.
+    offset = {"x": 0, "y": 0}
+    full_device = False
+    screen_attr = (root.attributes or {}).get("screen") if is_web and root is not None else None
+    if screen_attr:
+        m = re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", screen_attr)
+        if m:
+            screen_w, screen_h = int(m.group(3)), int(m.group(4))
+
+            def _tol(a: float, b: float) -> bool:
+                return abs(a - b) <= max(4, b * 0.02)
+
+            full_device = _tol(extents["width"], screen_w) and _tol(extents["height"], screen_h)
+    if is_web and webview_rect:
+        offset["x"] = round(webview_rect.get("x", 0))
+        offset["y"] = round(webview_rect.get("y", 0))
 
     xml_b64 = ""
     if root is not None:
@@ -174,7 +228,7 @@ def build_live_view_html(
     def _overlay(n: Node) -> str:
         r = n.rect
         style = (
-            f'left:{_pct(r["x1"], extents["width"])};top:{_pct(r["y1"], extents["height"])};'
+            f'left:{_pct(offset["x"] + r["x1"], extents["width"])};top:{_pct(offset["y"] + r["y1"], extents["height"])};'
             f'width:{_pct(r["w"], extents["width"])};height:{_pct(r["h"], extents["height"])};z-index:{_z_index(n)}'
         )
         if _is_box(n):
@@ -242,6 +296,12 @@ def build_live_view_html(
 
     aspect = f'{extents["width"] or 9} / {extents["height"] or 16}'
     stage_inner = (f'<img class="lv-shot" src="{shot}" alt="screenshot">' if shot else "") + overlays
+    # A horizontal (landscape) screenshot stacks: a large full-width stage on top,
+    # source tree + panel beneath it (see the .lv-landscape rules in the stylesheet).
+    root_cls = "lv-root lv-landscape" if extents["width"] > extents["height"] else "lv-root"
+    # Locator tester strategies — CSS only where it applies (web / hybrid HTML).
+    strat_opts = ('<option value="css">CSS</option>' if is_web else "") + '<option value="xpath">XPath</option>'
+    find_ph = "Test CSS, e.g. input[name=q]" if is_web else "Test XPath, e.g. //*[@text='OK']"
 
     return f"""<!doctype html>
 <html lang="en">
@@ -252,28 +312,35 @@ def build_live_view_html(
 </head>
 <body>
 <style>{BASE_CSS}{selection_css}</style>
-<div class="lv-root" data-appium-live-view="1" data-src="{xml_b64}">
+<div class="{root_cls}" data-appium-live-view="1" data-src="{xml_b64}">
 {radios}
 <div class="lv-head">
   <h1>{_escape(title)}</h1>
   <span class="lv-meta">{meta}</span>
   {tools}
-  <span class="lv-xpath">
-    <input type="text" id="lv-xpath" placeholder="Test XPath, e.g. //*[@text='OK']" autocomplete="off" spellcheck="false">
-    <span class="lv-xpath-status" id="lv-xstat"></span>
+  <span class="lv-testers">
+    <span class="lv-tester">
+      <select id="lv-strat" class="lv-strat" aria-label="Locator strategy">{strat_opts}</select>
+      <input type="text" id="lv-find" placeholder="{find_ph}" autocomplete="off" spellcheck="false">
+      <span class="lv-xpath-status" id="lv-fstat"></span>
+    </span>
   </span>
 </div>
 <div class="lv-main">
-  <div class="lv-stage" style="aspect-ratio:{aspect}">
-    {stage_inner}
+  <div class="lv-stagecol">
+    <div class="lv-hint">Hover an element to preview it; click to pin its attributes and locators here.</div>
+    <div class="lv-stage" style="aspect-ratio:{aspect}">
+      {stage_inner}
+    </div>
   </div>
-  <nav class="lv-tree" aria-label="Source tree">
-    <div class="lv-tree-head">Source tree · {len(nodes)} nodes</div>
-    <div class="lv-tree-body">{tree_rows}</div>
-  </nav>
-  <div class="lv-side">
-    <div class="lv-panel lv-panel-none">Hover an element to preview it; click to pin its attributes and locators here.</div>
-    {panels}
+  <div class="lv-aside">
+    <nav class="lv-tree" aria-label="Source tree">
+      <div class="lv-tree-head">Source tree · {len(nodes)} nodes</div>
+      <div class="lv-tree-body">{tree_rows}</div>
+    </nav>
+    <div class="lv-side">
+      {panels}
+    </div>
   </div>
 </div>
 </div>

@@ -4,7 +4,22 @@ All notable changes to this project are documented here. Versions follow
 [semantic versioning](https://semver.org/). The npm plugin, the JS renderer and
 the Python package (`appium-live-view` on PyPI) share one version.
 
-## [0.1.2] — unreleased
+## [0.1.2] — 2026-07-13
+
+### Fixed
+
+- **Suggested WebView locators now resolve in the tester.** The locator tester
+  evaluates against an HTML mirror of the source rooted at the page's `<html>` (the
+  `<webview>` wrapper stripped), so the exact locators shown in the panel — an
+  absolute `/html/body/…` XPath, `#id` / `.class` / `[attr]` CSS — all match, where
+  before the wrapper made absolute XPaths report "no match".
+- **The "hover an element" placeholder no longer shows above a pinned panel.** When
+  an element is selected (including a pre-selected `selectedPath`), the placeholder
+  hides and only the element's panel shows.
+- **Allure report patch: attachments reliably expand to full height.** The report
+  runtime now re-asserts the fitted height whenever Allure re-applies its own
+  iframe sizing (on expand / re-render), so an expanded live view no longer
+  sometimes stays collapsed in the thin default preview strip.
 
 ### Added
 
@@ -15,6 +30,33 @@ the Python package (`appium-live-view` on PyPI) share one version.
   the renderer auto-detects the web context and suggests **CSS + DOM-XPath**
   locators (or force it with `context: "web"`). Exposed from the JS package
   (`lib/web-snapshot.js`) and the Python package (`WEB_SNAPSHOT_JS`).
+  The web coordinate space is taken from the **screenshot's own pixel size**
+  (÷ the snapshot's `devicePixelRatio`), so overlays line up per device even when
+  the mobile URL bar shows/hides between the snapshot and the screenshot (which
+  changes `innerHeight`), and across a **device switch** (each device's dpr and
+  viewport are handled from its own snapshot).
+- **Locator tester with a strategy dropdown.** The header tester is one input with
+  a **CSS / XPath** dropdown to its left (CSS offered only in web / hybrid HTML
+  contexts). Type a selector to highlight every matching element on the screenshot
+  and in the tree, with a live match count. CSS supports `#id`, `.class`,
+  `tag[attr=…]` and combinators.
+- **Landscape layout for horizontal screenshots.** When the screenshot is wider
+  than tall (desktop web, a rotated device), the live view stacks — a large
+  full-width stage on top, the source tree + attribute/locator panel in a row
+  beneath it, all clamped to the screenshot width and centred — instead of
+  squeezing a wide screenshot into a narrow side column. The "hover an element"
+  hint moves above the screenshot. Portrait (mobile) keeps the stage-beside-panel
+  layout.
+- **Full-device web screenshots (iOS Safari / hybrid WebView below a native bar).**
+  The snapshot now also records the device `screen` size, so the renderer can tell a
+  full-device screenshot (screenshot == screen, e.g. iOS Safari with its status bar
+  and toolbar) from a bare web-viewport screenshot (Android Chrome). For a
+  full-device screenshot the web content starts below the top chrome; the offset
+  isn't visible to the page (`window.screenY` and safe-area insets both report 0), so
+  it's supplied via the new **`webviewRect`** option (JS) / **`webview_rect`**
+  (Python) — the WebView's on-screen rectangle in CSS px, e.g. from Appium's native
+  context. Overlays are shifted by it. Android and viewport screenshots need nothing
+  (offset 0, auto).
 
 ## [0.1.1] — 2026-07-11
 

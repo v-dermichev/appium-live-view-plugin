@@ -158,6 +158,9 @@ test('selectedPath pre-checks the matching radio', () => {
   const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1, selectedPath: login.path });
   assert.match(html, new RegExp(`id="lv-r-${login.index}" class="lv-r" checked`));
   assert.ok(!/id="lv-none" class="lv-r" checked/.test(html));
+  // the "hover an element" placeholder is hidden unless nothing is selected
+  assert.match(html, /\.lv-hint\{display:none/);
+  assert.match(html, /#lv-none:checked~\.lv-main \.lv-hint{display:block}/);
 });
 
 test('web context: DOM snapshot gets CSS/DOM locators and overlays', () => {
@@ -177,10 +180,88 @@ test('web context: DOM snapshot gets CSS/DOM locators and overlays', () => {
   assert.ok(html.includes(`lv-el lv-el-${go.index}"`), 'button overlay present');
 });
 
+test('web context: coordinate space comes from the screenshot (÷ dpr), not innerHeight', () => {
+  // Fake PNG data URI whose IHDR reports w×h; pngSize only reads the header.
+  const fakePng = (w, h) => {
+    const b = Buffer.alloc(24);
+    b.writeUInt32BE(0x89504e47, 0); // PNG signature start
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return `data:image/png;base64,${b.toString('base64')}`;
+  };
+  // Snapshot says innerHeight=500 (URL bar showing), but the screenshot viewport
+  // is 720×1200 px @ dpr 2 => 360×600 css. Overlays must use 360×600.
+  const xml =
+    '<webview dpr="2" bounds="[0,0][360,500]">' +
+    '<html bounds="[0,0][360,500]"><body bounds="[0,0][360,500]">' +
+    '<button id="b" bounds="[0,300][360,360]"></button>' +
+    '</body></html></webview>';
+  const html = buildLiveViewHtml({ xml, screenshot: fakePng(720, 1200), context: 'web' });
+  assert.match(html, /aspect-ratio:\s*360\s*\/\s*600/, 'stage aspect from screenshot css size');
+  // button y1=300 of 600 => 50%, not 300/500=60%.
+  assert.match(html, /top:50\.0000%/, 'overlay top uses screenshot-derived height');
+  assert.ok(!/top:60\.0000%/.test(html), 'does not use innerHeight');
+});
+
+test('web context: webviewRect offsets overlays on a full-device screenshot', () => {
+  const fakePng = (w, h) => {
+    const b = Buffer.alloc(24);
+    b.writeUInt32BE(0x89504e47, 0);
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return `data:image/png;base64,${b.toString('base64')}`;
+  };
+  // Full-device screenshot: screen == screenshot (393x852 @ dpr 1); viewport
+  // (inner) is 393x659 sitting 59px below the top (status bar).
+  const xml =
+    '<webview dpr="1" bounds="[0,0][393,659]" screen="[0,0][393,852]">' +
+    '<html bounds="[0,0][393,659]"><body bounds="[0,0][393,659]">' +
+    '<button id="b" bounds="[0,100][393,140]"></button>' +
+    '</body></html></webview>';
+  const png = fakePng(393, 852);
+  const off = buildLiveViewHtml({ xml, screenshot: png, context: 'web', webviewRect: { x: 0, y: 59 } });
+  // button y1=100 + offset 59 = 159 of 852 => 18.6620%
+  assert.match(off, /top:18\.6620%/, 'overlay shifted by webviewRect.y');
+  // without the rect it lands at 100/852 = 11.7371% (no auto-offset)
+  const noOff = buildLiveViewHtml({ xml, screenshot: png, context: 'web' });
+  assert.match(noOff, /top:11\.7371%/, 'no offset without webviewRect');
+});
+
+test('landscape screenshot gets the stacked layout class', () => {
+  const fakePng = (w, h) => {
+    const b = Buffer.alloc(24);
+    b.writeUInt32BE(0x89504e47, 0);
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return `data:image/png;base64,${b.toString('base64')}`;
+  };
+  const xml = '<webview dpr="1" bounds="[0,0][900,500]"><html bounds="[0,0][900,500]"></html></webview>';
+  const wide = buildLiveViewHtml({ xml, screenshot: fakePng(900, 500), context: 'web' });
+  assert.match(wide, /class="lv-root lv-landscape"/, 'wide screenshot → landscape layout');
+  const tall = buildLiveViewHtml({
+    xml: '<webview dpr="1" bounds="[0,0][500,900]"><html bounds="[0,0][500,900]"></html></webview>',
+    screenshot: fakePng(500, 900), context: 'web',
+  });
+  assert.match(tall, /class="lv-root"/, 'tall screenshot → default layout');
+  assert.ok(!/class="lv-root lv-landscape"/.test(tall), 'no landscape class on root when portrait');
+});
+
+test('locator tester: CSS strategy web-only; hint sits above the stage', () => {
+  const web = buildLiveViewHtml({ xml: WEB_XML, screenshot: PNG_1x1 });
+  assert.match(web, /id="lv-find"/, 'single locator input');
+  assert.match(web, /<select id="lv-strat"[^>]*>\s*<option value="css">CSS<\/option><option value="xpath">XPath<\/option>/, 'web has CSS + XPath strategies');
+  assert.match(web, /<div class="lv-stagecol">\s*<div class="lv-hint">/, 'hint is above the stage');
+  const native = buildLiveViewHtml({ xml: ANDROID_XML, screenshot: PNG_1x1 });
+  assert.ok(!/<option value="css">/.test(native), 'native context has no CSS strategy');
+  assert.match(native, /<select id="lv-strat"[^>]*><option value="xpath">XPath<\/option>/, 'native has XPath only');
+});
+
 test('WEB_SNAPSHOT_JS is a browser snapshot script', () => {
   assert.match(WEB_SNAPSHOT_JS, /^return \(/);
   assert.match(WEB_SNAPSHOT_JS, /getBoundingClientRect/);
   assert.match(WEB_SNAPSHOT_JS, /bounds=/);
+  assert.match(WEB_SNAPSHOT_JS, /dpr=/);
+  assert.match(WEB_SNAPSHOT_JS, /screen=/);
 });
 
 test('renders without a screenshot (source-only)', () => {
