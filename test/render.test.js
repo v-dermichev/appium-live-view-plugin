@@ -256,6 +256,20 @@ test('locator tester: CSS strategy web-only; hint sits above the stage', () => {
   assert.match(native, /<select id="lv-strat"[^>]*><option value="xpath">XPath<\/option>/, 'native has XPath only');
 });
 
+test('CSS class selector capped to 3; locator cards carry no data-copy or hint markup', () => {
+  const xml =
+    '<webview bounds="[0,0][390,700]"><html bounds="[0,0][390,700]"><body bounds="[0,0][390,700]">' +
+    '<button class="a b c d e f" bounds="[0,0][10,10]"></button></body></html></webview>';
+  const parsed = parseSource(xml);
+  const btn = parsed.nodes.find((n) => n.tagName === 'button');
+  const locs = suggestLocators(btn, true).map((l) => l.value);
+  assert.ok(locs.includes('button.a.b.c'), 'class selector capped to the first 3 classes');
+  assert.ok(!locs.some((v) => v.includes('.d')), 'classes past the cap are dropped');
+  const html = buildLiveViewHtml({ parsed, screenshot: PNG_1x1 });
+  assert.ok(!/data-copy/.test(html), 'no duplicated data-copy attribute (copy reads the <code> text)');
+  assert.ok(!/lv-loc-hint/.test(html), '"click to copy" hint is CSS, not per-card markup');
+});
+
 test('WEB_SNAPSHOT_JS is a browser snapshot script', () => {
   assert.match(WEB_SNAPSHOT_JS, /^return \(/);
   assert.match(WEB_SNAPSHOT_JS, /getBoundingClientRect/);

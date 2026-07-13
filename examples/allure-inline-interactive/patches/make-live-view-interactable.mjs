@@ -21,7 +21,7 @@ const MARKER = "data-appium-live-view-runtime";
 // the parent origin, so this works for both served and file:// single-file reports,
 // and the injected script runs INSIDE the iframe. Everything it needs survives
 // DOMPurify: the marker, data-src (page source, base64), the stylesheet, the
-// overlays, the locator cards (data-copy) and the XPath input.
+// overlays, the locator cards and the locator tester input.
 function liveViewRuntime() {
   // Runs INSIDE the swapped iframe (self-contained). Wires copy-on-click for
   // locator cards and the XPath tester; toggles the .lv-copied / .lv-xhit classes
@@ -62,7 +62,8 @@ function liveViewRuntime() {
     document.addEventListener("click", (e) => {
       const li = e.target.closest && e.target.closest(".lv-loc");
       if (!li) return;
-      copy(li.getAttribute("data-copy") || "").then(() => {
+      const val = li.querySelector(".lv-loc-value");
+      copy(val ? val.textContent : "").then(() => {
         li.classList.add("lv-copied");
         clearTimeout(li.__lvT);
         li.__lvT = setTimeout(() => li.classList.remove("lv-copied"), 1100);

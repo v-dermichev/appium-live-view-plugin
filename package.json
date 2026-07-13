@@ -1,6 +1,6 @@
 {
   "name": "appium-live-view-plugin",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Appium plugin that renders the active session's page source + screenshot into a single self-contained, interactive HTML live view (hover to highlight, click to inspect element attributes and locators), ready to attach to Allure or any report.",
   "type": "module",
   "main": "index.js",

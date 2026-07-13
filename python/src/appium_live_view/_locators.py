@@ -54,7 +54,10 @@ def _web_locators(node: Node, a: dict, add) -> list[dict]:
     if a.get("aria-label"):
         add("css", "css selector", f'{tag}[aria-label="{_css_attr_value(a["aria-label"])}"]')
     if a.get("class"):
-        cls = "".join(f".{c}" for c in a["class"].strip().split() if _CSS_IDENT.match(c))
+        # Cap to the first few classes — utility-CSS frameworks put dozens on an
+        # element, making a fragile selector and bloating the panel.
+        idents = [c for c in a["class"].strip().split() if _CSS_IDENT.match(c)]
+        cls = "".join(f".{c}" for c in idents[:3])
         if cls:
             add("css", "css selector", f"{tag}{cls}")
     if a.get("text"):

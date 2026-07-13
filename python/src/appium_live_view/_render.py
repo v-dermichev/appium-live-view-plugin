@@ -101,13 +101,12 @@ def _png_size(data_uri: str):
 def _render_panel(node: Node, is_web: bool = False) -> str:
     attrs = node.attributes or {}
     rows = "".join(f"<tr><th>{_escape(k)}</th><td>{_escape(v)}</td></tr>" for k, v in attrs.items())
+    # Compact (a large page has thousands of these): the locator string lives only
+    # in <code> — the copy handler reads its textContent — and the "click to copy"
+    # hint is a CSS ::after on the head, not markup.
     locators = "".join(
-        f'''
-        <li class="lv-loc" data-copy="{_escape(loc["value"])}" title="Click to copy">
-          <div class="lv-loc-head"><span class="lv-loc-type">{_escape(loc["type"])}</span>
-            <span class="lv-loc-hint">click to copy</span></div>
-          <code class="lv-loc-value">{_escape(loc["value"])}</code>
-        </li>'''
+        f'<li class="lv-loc"><div class="lv-loc-head"><span class="lv-loc-type">{_escape(loc["type"])}</span></div>'
+        f'<code class="lv-loc-value">{_escape(loc["value"])}</code></li>'
         for loc in suggest_locators(node, is_web)
     )
     rect = (
@@ -115,14 +114,14 @@ def _render_panel(node: Node, is_web: bool = False) -> str:
         if node.rect
         else ""
     )
-    return f'''
-    <div class="lv-panel lv-panel-{node.index}">
-      <div class="lv-panel-head"><span class="lv-tag">{_escape(node.tag_name)}</span>{rect}</div>
-      <div class="lv-sub">Suggested locators</div>
-      <ul class="lv-locators">{locators}</ul>
-      <div class="lv-sub">Attributes</div>
-      <table class="lv-attrs">{rows}</table>
-    </div>'''
+    # Single line on purpose — one panel per node, so indentation whitespace would
+    # multiply across a large page.
+    return (
+        f'<div class="lv-panel lv-panel-{node.index}"><div class="lv-panel-head">'
+        f'<span class="lv-tag">{_escape(node.tag_name)}</span>{rect}</div>'
+        f'<div class="lv-sub">Suggested locators</div><ul class="lv-locators">{locators}</ul>'
+        f'<div class="lv-sub">Attributes</div><table class="lv-attrs">{rows}</table></div>'
+    )
 
 
 def build_live_view_html(

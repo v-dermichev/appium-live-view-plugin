@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Versions follow
 [semantic versioning](https://semver.org/). The npm plugin, the JS renderer and
 the Python package (`appium-live-view` on PyPI) share one version.
 
+## [0.1.3] — 2026-07-13
+
+### Changed
+
+- **Smaller attachments for large pages.** The live view no longer duplicates each
+  locator string (the copy handler reads the visible `<code>` text instead of a
+  `data-copy` attribute), the "click to copy" hint is drawn from CSS rather than
+  repeated in markup, CSS class selectors are capped to the first 3 classes
+  (utility-CSS frameworks put dozens on an element), and the per-node panel/locator
+  markup is emitted without indentation. On a ~1700-node page the HTML drops ~18%
+  (e.g. 4.1 MB → 3.4 MB) with no change in behaviour.
+
 ## [0.1.2] — 2026-07-13
 
 ### Fixed

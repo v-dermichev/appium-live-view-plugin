@@ -256,6 +256,21 @@ def test_locator_tester_css_web_only_and_hint_above_stage():
     assert '<select id="lv-strat" class="lv-strat" aria-label="Locator strategy"><option value="xpath">XPath</option>' in native
 
 
+def test_css_class_capped_and_no_data_copy():
+    xml = (
+        '<webview bounds="[0,0][390,700]"><html bounds="[0,0][390,700]"><body bounds="[0,0][390,700]">'
+        '<button class="a b c d e f" bounds="[0,0][10,10]"></button></body></html></webview>'
+    )
+    parsed = parse_source(xml)
+    btn = next(n for n in parsed["nodes"] if n.tag_name == "button")
+    locs = [l["value"] for l in suggest_locators(btn, is_web=True)]
+    assert "button.a.b.c" in locs  # capped to first 3 classes
+    assert not any(".d" in v for v in locs)  # extras dropped
+    html = build_live_view_html(parsed=parsed, screenshot=PNG_1x1)
+    assert "data-copy" not in html  # copy reads the <code> text instead
+    assert "lv-loc-hint" not in html  # hint is CSS, not per-card markup
+
+
 def test_web_snapshot_js_matches_and_is_a_script():
     assert WEB_SNAPSHOT_JS.startswith("return (")
     assert "getBoundingClientRect" in WEB_SNAPSHOT_JS
